@@ -78,16 +78,16 @@
   var historyStack = [];
   var historyIndex = -1;
 
-  function pushHistory(view, param) {
+  function pushHistory(view, param, scrollSecId) {
     if (historyIndex >= 0 && historyIndex < historyStack.length) {
       var current = historyStack[historyIndex];
-      if (current.view === view && current.param === param) {
+      if (current.view === view && current.param === param && current.scrollSecId === (scrollSecId || null)) {
         return; // Không đẩy mục trùng lặp liên tiếp
       }
     }
     // Cắt bỏ nhánh forward cũ nếu đang ở giữa lịch sử
     historyStack = historyStack.slice(0, historyIndex + 1);
-    historyStack.push({ view: view, param: param });
+    historyStack.push({ view: view, param: param, scrollSecId: scrollSecId || null });
     historyIndex = historyStack.length - 1;
     updateNavButtonsState();
   }
@@ -225,261 +225,6 @@
     return html;
   }
 
-  function normalizeVal(val) {
-    if (val === null || val === undefined) return null;
-    if (typeof val === "number") return Number(val.toFixed(4));
-    var str = String(val).trim();
-    var num = Number(str);
-    if (!isNaN(num) && str !== "") return Number(num.toFixed(4));
-    return str.toLowerCase();
-  }
-
-  function getAll77LabProblems() {
-    var list = [];
-    (DATA.chapters || []).forEach(function(ch, cIdx) {
-      var chCode = ch.code || ("Chương " + (ch.num || (cIdx + 1)));
-      (ch.basics || []).forEach(function(b, bIdx) {
-        var pid = b.id || (ch.id + "_b" + (b.num || (bIdx + 1)));
-        list.push({
-          id: pid,
-          chId: ch.id,
-          chCode: chCode,
-          title: b.title || ("Bài cơ bản " + (bIdx + 1)),
-          difficulty: "Cơ bản",
-          db: b.db || "truonghoc",
-          prompt: b.problem || b.prompt || b.summary || "",
-          h1: (b.hints && b.hints[0]) || b.intuition || "Xác định bảng nguồn và điều kiện lọc.",
-          h2: (b.hints && b.hints[1]) || b.trace || "Kiểm tra các cột cần SELECT và thứ tự ORDER BY.",
-          solSql: b.sql || b.solution_sql || "",
-          expected: b.expected || b.expected_output || null,
-          required_keywords: b.required_keywords || [],
-          forbidden_keywords: b.forbidden_keywords || [],
-          order_matters: !!b.order_matters,
-          note3: {
-            idea: b.intuition || (ch.goals && ch.goals[0]) || "",
-            syntax: (b.hints && b.hints[1]) || "",
-            trap: (ch.common_errors && ch.common_errors[0]) || ""
-          }
-        });
-      });
-      (ch.practice || []).forEach(function(p, pIdx) {
-        var pid = p.id || (ch.id + "_p" + (pIdx + 1));
-        list.push({
-          id: pid,
-          chId: ch.id,
-          chCode: chCode,
-          title: p.title || ("Bài thực hành " + (pIdx + 1)),
-          difficulty: p.difficulty || "Thực hành",
-          db: p.db || "shoponline",
-          prompt: p.summary || p.prompt || p.problem || "",
-          h1: p.understand || (p.hints && p.hints[0]) || "Phân tích mối quan hệ giữa các bảng.",
-          h2: p.optimal || (p.hints && p.hints[1]) || "Viết truy vấn tối ưu và kiểm tra NULL.",
-          solSql: p.sql || p.solution_sql || "",
-          expected: p.expected || p.expected_output || null,
-          required_keywords: p.required_keywords || [],
-          forbidden_keywords: p.forbidden_keywords || [],
-          order_matters: !!p.order_matters,
-          note3: p.note3 || {
-            idea: p.understand || "",
-            syntax: p.optimal || "",
-            trap: p.pitfalls || ""
-          }
-        });
-      });
-    });
-
-    (DATA.leetcode_challenges || []).forEach(function(lc) {
-      list.push({
-        id: lc.id,
-        chId: "ch14",
-        chCode: "LeetCode #" + lc.lc_num,
-        title: lc.title,
-        difficulty: lc.difficulty || "Trung bình",
-        db: lc.db || "leetcode",
-        prompt: lc.prompt || "",
-        h1: (lc.hints && lc.hints[0]) || lc.pattern || lc.hint || "",
-        h2: (lc.hints && lc.hints[1]) || "",
-        solSql: lc.solution_sql || lc.sql || "",
-        expected: lc.expected || null,
-        starter_sql: lc.starter_sql || "",
-        required_keywords: lc.required_keywords || [],
-        forbidden_keywords: lc.forbidden_keywords || [],
-        order_matters: !!lc.order_matters,
-        note3: {
-          idea: "Mẫu bài toán: " + (lc.pattern || lc.title),
-          syntax: lc.solution_sql || "",
-          trap: (lc.hints && lc.hints[0]) || ""
-        }
-      });
-    });
-
-    // Nạp thêm 130 bài tập thực hành FruitStore_Ultimate (Ch01 -> Ch13)
-    var fsDrills = (global.SQLMasterRegistry && Array.isArray(global.SQLMasterRegistry.fruitstoreDrills))
-      ? global.SQLMasterRegistry.fruitstoreDrills
-      : [];
-    fsDrills.forEach(function(ex) {
-      var groupLabel = "🍎 Chương " + (ex.chapterNum || ex.chapterId.replace("ch0", "").replace("ch", "")) + ": FruitStore";
-      list.push({
-        id: ex.id,
-        chId: ex.chapterId,
-        chCode: groupLabel,
-        title: ex.title,
-        difficulty: ex.level || "Cơ bản",
-        db: "fruitstore",
-        prompt: ex.question,
-        h1: ex.hint,
-        h2: "Khuôn mẫu phản xạ: " + ex.pattern,
-        solSql: ex.sql || ex.sqlite,
-        tsql: ex.tsql,
-        pattern: ex.pattern,
-        expected: ex.expected,
-        starter_sql: "-- Đề bài: " + ex.title + " (DB: FruitStore_Ultimate)\n-- Khuôn mẫu: " + ex.pattern + "\n\n",
-        order_matters: false,
-        note3: {
-          idea: ex.pattern,
-          syntax: ex.tsql,
-          trap: ex.hint
-        }
-      });
-    });
-
-    return list;
-  }
-
-  function gradeSqlProblem(problem, userSql) {
-    if (!sqlEngineReady || !SQL) {
-      return { pass: false, msg: "SQLite WASM chưa nạp xong. Vui lòng thử lại sau vài giây." };
-    }
-    var dbId = problem.db || state.activeDbId;
-    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
-    var dbMeta = dbs.find(function(d) { return d.id === dbId; });
-    if (!dbMeta) {
-      return { pass: false, msg: "Không tìm thấy cấu hình CSDL: " + dbId };
-    }
-
-    var cleanSql = (userSql || "").trim();
-    if (!cleanSql) {
-      return { pass: false, msg: "Bạn chưa nhập câu lệnh SQL nào!" };
-    }
-
-    // 1. Kiểm tra từ khóa bắt buộc / bị cấm (nếu có)
-    if (Array.isArray(problem.required_keywords)) {
-      for (var i = 0; i < problem.required_keywords.length; i++) {
-        var kw = problem.required_keywords[i];
-        var reg = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-        if (!reg.test(cleanSql)) {
-          return { pass: false, msg: "Câu lệnh của bạn cần sử dụng từ khóa: " + kw };
-        }
-      }
-    }
-    if (Array.isArray(problem.forbidden_keywords)) {
-      for (var j = 0; j < problem.forbidden_keywords.length; j++) {
-        var fkw = problem.forbidden_keywords[j];
-        var fReg = new RegExp(fkw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-        if (fReg.test(cleanSql)) {
-          return { pass: false, msg: "Câu lệnh vi phạm quy tắc: Không được dùng " + fkw };
-        }
-      }
-    }
-
-    // 2. Tạo bản sao CSDL sạch trong RAM để chấm điểm nhất quán (hỗ trợ cả DML INSERT/UPDATE/DELETE)
-    var tempUserDb = new SQL.Database();
-    var userRes = { columns: [], values: [] };
-    try {
-      if (dbMeta.schema_sql) tempUserDb.run(dbMeta.schema_sql);
-      if (dbMeta.seed_sql) tempUserDb.run(dbMeta.seed_sql);
-      var uExec = tempUserDb.exec(cleanSql);
-      if (uExec && uExec.length > 0) {
-        userRes = uExec[uExec.length - 1];
-      }
-    } catch (err) {
-      tempUserDb.close();
-      return { pass: false, msg: "Lỗi cú pháp SQL: " + err.message };
-    }
-    tempUserDb.close();
-
-    // 3. Lấy tập kết quả chuẩn từ problem.expected HOẶC chạy problem.solSql / problem.solution_sql
-    var solCols = [];
-    var solVals = [];
-    if (problem.expected && Array.isArray(problem.expected.cols)) {
-      solCols = problem.expected.cols;
-      solVals = problem.expected.rows || [];
-    } else {
-      var refSql = problem.solSql || problem.solution_sql || problem.sql || "";
-      if (!refSql) {
-        return { pass: false, msg: "Bài tập này chưa có câu lệnh đáp án tham chiếu." };
-      }
-      var tempSolDb = new SQL.Database();
-      try {
-        if (dbMeta.schema_sql) tempSolDb.run(dbMeta.schema_sql);
-        if (dbMeta.seed_sql) tempSolDb.run(dbMeta.seed_sql);
-        var sExec = tempSolDb.exec(refSql);
-        if (sExec && sExec.length > 0) {
-          solCols = sExec[sExec.length - 1].columns;
-          solVals = sExec[sExec.length - 1].values;
-        }
-      } catch (sErr) {
-        tempSolDb.close();
-        return { pass: false, msg: "Lỗi khi chạy đáp án chuẩn: " + sErr.message };
-      }
-      tempSolDb.close();
-    }
-
-    var userFormatted = { cols: userRes.columns || [], rows: userRes.values || [] };
-    var solFormatted = { cols: solCols, rows: solVals };
-
-    // 4. Đối chiếu số cột và số dòng
-    if (userFormatted.cols.length !== solFormatted.cols.length) {
-      return {
-        pass: false,
-        msg: "Sai số lượng cột: Câu lệnh của bạn trả về " + userFormatted.cols.length + " cột (" + userFormatted.cols.join(", ") + "), nhưng đáp án yêu cầu " + solFormatted.cols.length + " cột (" + solFormatted.cols.join(", ") + ").",
-        userTable: userFormatted,
-        expectedTable: solFormatted
-      };
-    }
-
-    if (userFormatted.rows.length !== solFormatted.rows.length) {
-      return {
-        pass: false,
-        msg: "Sai số lượng dòng: Câu lệnh của bạn trả về " + userFormatted.rows.length + " dòng, nhưng đáp án chuẩn có " + solFormatted.rows.length + " dòng.",
-        userTable: userFormatted,
-        expectedTable: solFormatted
-      };
-    }
-
-    // 5. Chuẩn hóa và đối chiếu từng ô dữ liệu
-    var uRows = userFormatted.rows.map(function(r) { return r.map(normalizeVal); });
-    var eRows = solFormatted.rows.map(function(r) { return r.map(normalizeVal); });
-
-    if (!problem.order_matters) {
-      var sortFn = function(a, b) { return JSON.stringify(a).localeCompare(JSON.stringify(b)); };
-      uRows.sort(sortFn);
-      eRows.sort(sortFn);
-    }
-
-    for (var r = 0; r < eRows.length; r++) {
-      for (var c = 0; c < eRows[r].length; c++) {
-        if (uRows[r][c] !== eRows[r][c]) {
-          return {
-            pass: false,
-            msg: "Sai lệch dữ liệu tại dòng #" + (r + 1) + " (cột '" + solFormatted.cols[c] + "'): Giá trị của bạn là '" + userFormatted.rows[r][c] + "', trong khi đáp án chuẩn là '" + solFormatted.rows[r][c] + "'." + (problem.order_matters ? " (Lưu ý: Bài này có kiểm tra thứ tự sắp xếp ORDER BY)." : ""),
-            userTable: userFormatted,
-            expectedTable: solFormatted
-          };
-        }
-      }
-    }
-
-    return {
-      pass: true,
-      msg: "CHÍNH XÁC 100%! Tập kết quả (" + solFormatted.rows.length + " dòng, " + solFormatted.cols.length + " cột) hoàn toàn khớp với đáp án chuẩn!",
-      rowCount: solFormatted.rows.length,
-      colCount: solFormatted.cols.length,
-      userTable: userFormatted,
-      expectedTable: solFormatted
-    };
-  }
-
   /* ========================================================================
      5. CẬP NHẬT GIAO DIỆN CHÍNH, TIẾN ĐỘ & STATUS BAR
      ======================================================================== */
@@ -490,16 +235,18 @@
 
   function updateOverallProgress() {
     var completedCount = Object.keys(state.completedItems).length;
-    var totalProblems = (DATA.toc && DATA.toc.total_problems) ? DATA.toc.total_problems : 77;
-    var percent = Math.min(100, Math.round((completedCount / totalProblems) * 100));
+    var allProbs = (typeof getAll77LabProblems === "function") ? getAll77LabProblems() : [];
+    var totalChapters = (DATA.chapters && Array.isArray(DATA.chapters)) ? DATA.chapters.length : 15;
+    var totalTrackable = allProbs.length > 0 ? (allProbs.length + totalChapters) : 222;
+    var percent = Math.min(100, Math.round((completedCount / totalTrackable) * 100));
 
     var fillEl = document.getElementById("top-progress-fill");
     var textEl = document.getElementById("top-progress-text");
     if (fillEl) fillEl.style.width = percent + "%";
-    if (textEl) textEl.textContent = "Tiến độ: " + percent + "% (" + completedCount + "/" + totalProblems + ")";
+    if (textEl) textEl.textContent = "Tiến độ: " + percent + "% (" + completedCount + "/" + totalTrackable + ")";
 
     if (sqlEngineReady) {
-      var dbsCount = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases.length : 7;
+      var dbsCount = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : 7;
       updateStatusCell(3, "🗄️ SQLite: Ready (" + dbsCount + " DBs) | " + percent + "%");
     }
   }
@@ -546,39 +293,47 @@
     var container = document.getElementById("toc-tree-container");
     if (!container) return;
 
+    // Giữ lại vị trí cuộn của cây mục lục để không bị giật lên đầu khi render lại
+    var prevScrollTop = container.scrollTop;
+
     function renderChapterTreeItem(chObj) {
       if (!chObj) return "";
       var chId = chObj.id;
       var chCode = chObj.code || chId;
-      var html = '<li><details><summary><a href="#' + chId + '" class="tree-item-link" data-nav-ch="' + chId + '">' + escapeHtml(chCode + ': ' + chObj.title) + '</a></summary><ul>';
-      html += '<li><a href="#' + chId + '-s1" class="tree-item-link" data-scroll-sec="sec-goals">1. Mục tiêu &amp; Dấu hiệu</a></li>';
-      html += '<li><a href="#' + chId + '-s2" class="tree-item-link" data-scroll-sec="sec-theory">2. Lý thuyết nền tảng</a></li>';
-      html += '<li><a href="#' + chId + '-s3" class="tree-item-link" data-scroll-sec="sec-mechanism">3. Cơ chế chạy tay</a></li>';
+      var isCurrentCh = (state.lastView === "chapter" && state.lastChapterId === chId);
+      var openAttr = isCurrentCh ? " open" : "";
+      var activeCls = isCurrentCh && !state.lastScrollSec ? " active" : "";
+
+      var html = '<li><details id="tree-det-' + chId + '"' + openAttr + '>' +
+        '<summary><a href="#/chapter/' + chId + '" class="tree-item-link' + activeCls + '" data-nav-ch="' + chId + '">📄 ' + escapeHtml(chCode + ': ' + chObj.title) + '</a></summary><ul>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-goals" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-goals">§1. Mục tiêu &amp; Dấu hiệu</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-theory" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-theory">§2. Lý thuyết nền tảng</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-mechanism" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-mechanism">§3. Cơ chế chạy tay</a></li>';
       if (chId === "ch15") {
-        html += '<li><a href="#ch15-kw" class="tree-item-link" data-scroll-sec="sec-keyword-cards">3B. Từ điển 64 thẻ T-SQL</a></li>';
+        html += '<li><a href="#/chapter/ch15/sec-keyword-cards" class="tree-item-link" data-parent-ch="ch15" data-scroll-sec="sec-keyword-cards">§3B. Từ điển 64 thẻ T-SQL</a></li>';
       }
-      html += '<li><a href="#' + chId + '-s4" class="tree-item-link" data-scroll-sec="sec-examples">4. Cú pháp &amp; Ví dụ (' + (chObj.examples ? chObj.examples.length : 0) + ')</a></li>';
-      html += '<li><a href="#' + chId + '-s5" class="tree-item-link" data-scroll-sec="sec-dialects">5. Khác biệt phương ngữ</a></li>';
-      html += '<li><a href="#' + chId + '-s6" class="tree-item-link" data-scroll-sec="sec-bridge">6. Cầu nối Java &amp; C#</a></li>';
-      html += '<li><a href="#' + chId + '-s7" class="tree-item-link" data-scroll-sec="sec-perf">7. Hiệu năng &amp; Chi phí</a></li>';
-      html += '<li><a href="#' + chId + '-s8" class="tree-item-link" data-scroll-sec="sec-errors">8. Lỗi hay gặp (' + (chObj.common_errors ? chObj.common_errors.length : 0) + ')</a></li>';
-      html += '<li><a href="#' + chId + '-s9" class="tree-item-link" data-scroll-sec="sec-interview">9. Câu hỏi phỏng vấn (' + (chObj.interview ? chObj.interview.length : 0) + ')</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-examples" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-examples">§4. Cú pháp &amp; Ví dụ (' + (chObj.examples ? chObj.examples.length : 0) + ')</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-dialects" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-dialects">§5. Khác biệt phương ngữ</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-bridge" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-bridge">§6. Cầu nối Java &amp; C#</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-perf" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-perf">§7. Hiệu năng &amp; Chi phí</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-errors" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-errors">§8. Lỗi hay gặp (' + (chObj.common_errors ? chObj.common_errors.length : 0) + ')</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-interview" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-interview">§9. Câu hỏi phỏng vấn (' + (chObj.interview ? chObj.interview.length : 0) + ')</a></li>';
       var probCount = (chObj.basics ? chObj.basics.length : 0) + (chObj.practice ? chObj.practice.length : 0);
-      html += '<li><a href="#' + chId + '-s10" class="tree-item-link" data-scroll-sec="sec-exercises">10. Bài tập tự chấm (' + probCount + ')</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-exercises" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-exercises">§10. Bài tập tự chấm (' + probCount + ')</a></li>';
       if (chObj.fruitstoreDrills && chObj.fruitstoreDrills.length) {
-        html += '<li><a href="#' + chId + '-fs" class="tree-item-link" data-scroll-sec="sec-fruitstore-drills">🍎 10 Bài Phản Xạ FruitStore (' + chObj.fruitstoreDrills.length + ')</a></li>';
+        html += '<li><a href="#/chapter/' + chId + '/sec-fruitstore-drills" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-fruitstore-drills">§10B. 10 Bài Phản Xạ FruitStore</a></li>';
       }
-      html += '<li><a href="#' + chId + '-s11" class="tree-item-link" data-scroll-sec="sec-summary">11. Tổng kết &amp; Trắc nghiệm</a></li>';
+      html += '<li><a href="#/chapter/' + chId + '/sec-summary" class="tree-item-link" data-parent-ch="' + chId + '" data-scroll-sec="sec-summary">§11. Tổng kết &amp; Trắc nghiệm</a></li>';
       html += '</ul></details></li>';
       return html;
     }
 
     var html = '';
-    html += '<li><a href="#toc" class="tree-item-link ' + (state.lastView === "toc" ? "active" : "") + '" data-nav-view="toc">🏠 Bảng Mục Lục Tổng Quan</a></li>';
+    html += '<li><a href="#/toc" class="tree-item-link ' + (state.lastView === "toc" ? "active" : "") + '" data-nav-view="toc">📁 Bảng Mục Lục Tổng Quan (Home)</a></li>';
 
     // Nhóm 1: Phần I (Ch00 - Ch05)
-    html += '<li><details open><summary>📘 Phần I: Nền Tảng &amp; Truy Vấn Cốt Lõi (Ch00 - Ch05)</summary><ul>';
-    html += '<li><a href="#ch00" class="tree-item-link" data-nav-ch="ch00">Chương 0: Nền Tảng Cơ Sở Dữ Liệu</a></li>';
+    html += '<li><details open><summary>📘 Phần I: Nền Tảng &amp; Truy Vấn Cốt Lõi (Ch00 – Ch05)</summary><ul>';
+    html += '<li><a href="#/chapter/ch00" class="tree-item-link ' + (state.lastView === "chapter" && state.lastChapterId === "ch00" ? "active" : "") + '" data-nav-ch="ch00">📄 Chương 0: Nền Tảng Cơ Sở Dữ Liệu</a></li>';
     for (var i = 1; i <= 5; i++) {
       var chId = "ch0" + i;
       var chObj = (DATA.chapters || []).find(function(c) { return c.id === chId; });
@@ -587,7 +342,7 @@
     html += '</ul></details></li>';
 
     // Nhóm 2: Phần II (Ch06 - Ch10)
-    html += '<li><details open><summary>📗 Phần II: Thiết Kế, Lập Trình &amp; Quản Trị (Ch06 - Ch10)</summary><ul>';
+    html += '<li><details open><summary>📗 Phần II: Thiết Kế, Lập Trình &amp; Quản Trị (Ch06 – Ch10)</summary><ul>';
     for (var j = 6; j <= 10; j++) {
       var chId2 = (j < 10 ? "ch0" : "ch") + j;
       var chObj2 = (DATA.chapters || []).find(function(c) { return c.id === chId2; });
@@ -596,7 +351,7 @@
     html += '</ul></details></li>';
 
     // Nhóm 3: Phần III (Ch11 - Ch14)
-    html += '<li><details open><summary>📙 Phần III: Bảo Mật, Backend &amp; Phỏng Vấn (Ch11 - Ch14)</summary><ul>';
+    html += '<li><details open><summary>📙 Phần III: Bảo Mật, Backend &amp; Phỏng Vấn (Ch11 – Ch14)</summary><ul>';
     for (var k = 11; k <= 14; k++) {
       var chId3 = "ch" + k;
       var chObj3 = (DATA.chapters || []).find(function(c) { return c.id === chId3; });
@@ -607,27 +362,28 @@
     // Nhóm 4: Chương 15
     var ch15 = (DATA.chapters || []).find(function(c) { return c.id === "ch15"; });
     if (ch15) {
-      html += '<li><details open><summary>🍍 Phần IV: Từ Điển T-SQL &amp; FruitStore Lab (Ch15)</summary><ul>';
+      html += '<li><details open><summary>📕 Phần IV: Từ Điển T-SQL &amp; FruitStore (Ch15)</summary><ul>';
       html += renderChapterTreeItem(ch15);
       html += '</ul></details></li>';
     }
 
     // Nhóm 4B: Chuyên Đề 130 Bài Tập FruitStore (A-Z)
-    html += '<li><details open><summary>🍎 Chuyên Đề: 130 Bài Tập FruitStore (A–Z)</summary><ul>';
-    html += '<li><a href="#fruitstore130" class="tree-item-link ' + (state.lastView === "fruitstore130" ? "active" : "") + '" data-nav-view="fruitstore130">🍎 Toàn Bộ 130 Bài Phản Xạ (Ch01 - Ch13)</a></li>';
+    html += '<li><details open><summary>🗂️ Chuyên Đề: 130 Bài Tập FruitStore (A–Z)</summary><ul>';
+    html += '<li><a href="#/fruitstore130" class="tree-item-link ' + (state.lastView === "fruitstore130" ? "active" : "") + '" data-nav-view="fruitstore130">📄 Toàn Bộ 130 Bài Phản Xạ (Ch01 – Ch13)</a></li>';
     html += '</ul></details></li>';
 
     // Nhóm 5: Các Phân Khu Chức Năng
     html += '<li><details open><summary>🛠️ Phòng Thực Hành &amp; Công Cụ Chuyên Sâu</summary><ul>';
-    html += '<li><a href="#lab" class="tree-item-link" data-nav-view="lab">🧪 Phòng Lab SQL (SQLite WASM 7 DBs)</a></li>';
-    html += '<li><a href="#simulators" class="tree-item-link" data-nav-view="simulators">⚙️ 6 Bộ Mô Phỏng Trực Quan Tương Tác</a></li>';
-    html += '<li><a href="#interview" class="tree-item-link" data-nav-view="interview">🎯 Luyện Phỏng Vấn Leitner &amp; 12 LeetCode SQL</a></li>';
-    html += '<li><a href="#notes" class="tree-item-link" data-nav-view="notes">📝 Sổ Tay 3 Dòng &amp; Quản Lý Tiến Độ</a></li>';
-    html += '<li><a href="#tracks" class="tree-item-link" data-nav-view="tracks">🚀 Lộ Trình Mở Rộng (MySQL, Postgres, NoSQL)</a></li>';
-    html += '<li><a href="#appendices" class="tree-item-link" data-nav-view="appendices">📑 Phụ Lục Tra Cứu A – F &amp; Bản Quyền</a></li>';
+    html += '<li><a href="#/lab" class="tree-item-link ' + (state.lastView === "lab" ? "active" : "") + '" data-nav-view="lab">📄 Phòng Lab SQL (SQLite WASM 7 DBs)</a></li>';
+    html += '<li><a href="#/simulators" class="tree-item-link ' + (state.lastView === "simulators" ? "active" : "") + '" data-nav-view="simulators">📄 6 Bộ Mô Phỏng Trực Quan Tương Tác</a></li>';
+    html += '<li><a href="#/interview" class="tree-item-link ' + (state.lastView === "interview" ? "active" : "") + '" data-nav-view="interview">📄 Phỏng Vấn Leitner &amp; 12 LeetCode SQL</a></li>';
+    html += '<li><a href="#/notes" class="tree-item-link ' + (state.lastView === "notes" ? "active" : "") + '" data-nav-view="notes">📄 Sổ Tay 3 Dòng &amp; Quản Lý Tiến Độ</a></li>';
+    html += '<li><a href="#/tracks" class="tree-item-link ' + (state.lastView === "tracks" ? "active" : "") + '" data-nav-view="tracks">📄 Lộ Trình Mở Rộng (MySQL, PG, NoSQL)</a></li>';
+    html += '<li><a href="#/appendices" class="tree-item-link ' + (state.lastView === "appendices" ? "active" : "") + '" data-nav-view="appendices">📄 Phụ Lục Tra Cứu A – F &amp; Bản Quyền</a></li>';
     html += '</ul></details></li>';
 
     container.innerHTML = html;
+    container.scrollTop = prevScrollTop;
   }
 
   function renderLeftIndex() {
@@ -665,7 +421,7 @@
     var html = '<ul class="tree-view">';
     keywords.forEach(function(item) {
       if (!filter || item.kw.toLowerCase().indexOf(filter) !== -1) {
-        html += '<li><a href="#' + item.ch + '" class="tree-item-link" data-nav-ch="' + item.ch + '">📌 ' + item.kw + '</a></li>';
+        html += '<li><a href="#' + item.ch + '" class="tree-item-link" data-nav-ch="' + item.ch + '">📌 ' + escapeHtml(item.kw) + '</a></li>';
       }
     });
     html += '</ul>';
@@ -728,16 +484,19 @@
     });
 
     if (matches.length === 0) {
-      container.innerHTML = '<p style="padding:8px; color:var(--text-muted);">Không tìm thấy kết quả nào khớp với: "<b>' + q + '</b>"</p>';
+      container.innerHTML = '<p style="padding:8px; color:var(--text-muted);">Không tìm thấy kết quả nào khớp với: "<b>' + escapeHtml(q) + '</b>"</p>';
       return;
     }
 
     var html = '<div style="font-size:11px; margin-bottom:4px; font-weight:bold;">Tìm thấy ' + matches.length + ' kết quả:</div><ul class="tree-view">';
     matches.forEach(function(m) {
+      var escType = escapeHtml(m.type);
+      var escTitle = escapeHtml(m.title);
+      var escDesc = escapeHtml((m.desc || '').substring(0, 75));
       if (m.id) {
-        html += '<li><a href="#' + m.id + '" class="tree-item-link" data-nav-ch="' + m.id + '"><b>[' + m.type + ']</b> ' + m.title + '<br><small style="color:var(--text-muted);">' + m.desc.substring(0, 75) + '...</small></a></li>';
+        html += '<li><a href="#' + m.id + '" class="tree-item-link" data-nav-ch="' + m.id + '"><b>[' + escType + ']</b> ' + escTitle + '<br><small style="color:var(--text-muted);">' + escDesc + '...</small></a></li>';
       } else {
-        html += '<li><a href="#' + m.view + '" class="tree-item-link" data-nav-view="' + m.view + '" data-param="' + (m.param || '') + '"><b>[' + m.type + ']</b> ' + m.title + '<br><small style="color:var(--text-muted);">' + m.desc.substring(0, 75) + '...</small></a></li>';
+        html += '<li><a href="#' + m.view + '" class="tree-item-link" data-nav-view="' + m.view + '" data-param="' + (m.param || '') + '"><b>[' + escType + ']</b> ' + escTitle + '<br><small style="color:var(--text-muted);">' + escDesc + '...</small></a></li>';
       }
     });
     html += '</ul>';
@@ -1259,7 +1018,7 @@
             '🧪 Làm &amp; Chấm Điểm Trong SQL Lab ►' +
           '</button>' +
         '</div>' +
-        '<div style="margin:6px 0; font-family:var(--font-mono); background:#fffbe6; border:1px solid #d4b106; padding:4px 8px; font-size:12px;">' +
+        '<div style="margin:6px 0; font-family:var(--font-mono); background:var(--warn-bg, #fffbe6); border:1px solid var(--warn-border, #d4b106); color:var(--text); padding:4px 8px; font-size:12px;">' +
           '<strong>Khuôn mẫu phản xạ:</strong> <code>' + escapeHtml(ex.pattern) + '</code>' +
         '</div>' +
         '<p style="margin:6px 0; font-size:13px;"><strong>Đề bài:</strong> ' + escapeHtml(ex.question) + '</p>' +
@@ -1341,7 +1100,7 @@
           (percent > 5 ? (percent + '%') : '') +
         '</div>' +
       '</div>' +
-      '<div style="margin-top:10px; font-size:12px; background:#fffbe6; border:1px solid #d4b106; padding:8px;">' +
+      '<div style="margin-top:10px; font-size:12px; background:var(--warn-bg, #fffbe6); border:1px solid var(--warn-border, #d4b106); color:var(--text); padding:8px;">' +
         '<b>💡 Quy luật 10 bài/chương:</b> Bài 1–3: Mẫu A (3 bảng khác nhau) | Bài 4–6: Mẫu B (3 bảng khác nhau) | Bài 7–8: Tổ hợp Trung cấp | Bài 9–10: Báo cáo thực chiến &amp; Bẫy phỏng vấn.' +
       '</div>' +
     '</fieldset>';
@@ -1395,7 +1154,7 @@
               '🧪 Làm &amp; Chấm Trong Lab ►' +
             '</button>' +
           '</div>' +
-          '<div style="margin:6px 0; font-family:var(--font-mono); background:#fffbe6; border:1px solid #d4b106; padding:4px 8px; font-size:12px;">' +
+          '<div style="margin:6px 0; font-family:var(--font-mono); background:var(--warn-bg, #fffbe6); border:1px solid var(--warn-border, #d4b106); color:var(--text); padding:4px 8px; font-size:12px;">' +
             '<strong>Khuôn mẫu phản xạ:</strong> <code>' + escapeHtml(ex.pattern) + '</code>' +
           '</div>' +
           '<p style="margin: 6px 0; font-size:13px;"><strong>Đề bài:</strong> ' + escapeHtml(ex.question) + '</p>' +
@@ -1764,41 +1523,66 @@
     }
   }
 
+  function getDefaultTableForDb(dbId) {
+    var tblMap = {
+      fruitstore: "Sanpham",
+      truonghoc: "SinhVien",
+      northwind: "Customers",
+      sakila: "film",
+      bank: "Accounts",
+      social: "Users",
+      flights: "Flights"
+    };
+    return tblMap[dbId] || "sqlite_master";
+  }
+
   function renderLabView(dbId, problemId) {
     state.lastView = "lab";
-    if (dbId) state.activeDbId = dbId;
-    var currentDbId = state.activeDbId;
+    var allProbs = getAll77LabProblems();
+    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
 
-    updateAddressBar("chm://bikip-csdl-v2005/sql-lab/" + currentDbId);
-    updateStatusCell(2, "🧪 Phòng Lab SQL: " + currentDbId);
+    // Phân định rõ ràng: Guided Problem Mode hay Free Sandbox Mode
+    var currentProblem = null;
+
+    if (problemId) {
+      currentProblem = allProbs.find(function(p) { return p.id === problemId || p.id === ("#" + problemId); });
+      if (currentProblem) {
+        window._CURRENT_LAB_PROBLEM = currentProblem;
+        if (currentProblem.db) state.activeDbId = currentProblem.db;
+      }
+    } else if (dbId) {
+      if (window._CURRENT_LAB_PROBLEM && window._CURRENT_LAB_PROBLEM.db !== dbId) {
+        // Đổi DB khác -> Xóa bài tập cũ, vào Free Sandbox của DB mới
+        window._CURRENT_LAB_PROBLEM = null;
+      }
+      state.activeDbId = dbId;
+      currentProblem = window._CURRENT_LAB_PROBLEM;
+    } else {
+      currentProblem = window._CURRENT_LAB_PROBLEM;
+    }
+
+    var currentDbId = state.activeDbId || "fruitstore";
+    var currentDbMeta = dbs.find(function(d) { return d.id === currentDbId; }) || dbs[0] || {};
+
+    updateAddressBar("chm://bikip-csdl-v2005/sql-lab/" + currentDbId + (currentProblem ? ("/" + currentProblem.id) : ""));
+    updateStatusCell(2, "🧪 Phòng Lab SQL: " + currentDbId + (currentProblem ? (" (" + currentProblem.id + ")") : " [Tự do]"));
 
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
 
-    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
-    var currentDbMeta = dbs.find(function(d) { return d.id === currentDbId; }) || dbs[0] || {};
-
-    var allProbs = getAll77LabProblems();
-    var currentProblem = window._CURRENT_LAB_PROBLEM || (problemId ? allProbs.find(function(p){ return p.id === problemId; }) : allProbs[0]);
-    if (problemId && currentProblem && currentProblem.db) {
-      currentDbId = currentProblem.db;
-      state.activeDbId = currentDbId;
-      currentDbMeta = dbs.find(function(d) { return d.id === currentDbId; }) || dbs[0] || {};
-    }
-
     var html = '<div class="lab-container">' +
       '<div class="ch-banner">' +
-        '<div class="ch-code">SQL LAB // SQLITE WASM DETERMINISTIC RUNNER &amp; 77 PROBLEMS</div>' +
+        '<div class="ch-code">SQL LAB // SQLITE WASM DETERMINISTIC RUNNER &amp; 207 PROBLEMS</div>' +
         '<h1>Phòng Thực Hành SQL &amp; Máy Chấm Bài Tự Động</h1>' +
         '<div class="ch-source">Bố cục 2 cột chuyên nghiệp | Máy chấm RAM độc lập (Hỗ trợ DML) | Kế hoạch EXPLAIN QUERY PLAN</div>' +
       '</div>';
 
-    // Toolbar chọn Đề bài (77 bài) + CSDL (7 CSDL) + Reset + Schema
+    // Toolbar chọn Đề bài (207 bài) + CSDL (7 CSDL) + Reset + Schema
     html += '<fieldset class="retro-groupbox" style="margin-bottom:12px;"><legend>🗄️ Chọn Cơ Sở Dữ Liệu &amp; Đề Bài Thực Hành</legend>' +
       '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">' +
-        '<div class="field-row" style="margin:0;"><label for="lab-problem-select"><b>Đề bài (77 bài):</b></label>' +
+        '<div class="field-row" style="margin:0;"><label for="lab-problem-select"><b>Đề bài (207 bài):</b></label>' +
         '<select id="lab-problem-select" style="min-width:260px; max-width:400px;">' +
-          '<option value="">-- Chọn 1 trong 77 bài tập thực hành --</option>';
+          '<option value="">-- Chế độ tự do (Hoặc chọn 1 trong 207 bài tập) --</option>';
 
     var currentChapterGroup = "";
     allProbs.forEach(function(p) {
@@ -1843,7 +1627,7 @@
         '<fieldset class="retro-groupbox">' +
           '<legend>💻 Trình Soạn Thảo SQL (Nhấn F5: Chạy, Ctrl+S: Chấm điểm)</legend>' +
           '<div class="field-row-stacked">' +
-            '<textarea id="sql-editor" rows="9" style="width:100%; font-family:var(--font-mono); font-size:13px; padding:6px; background:var(--bg-panel); color:var(--text-main);" placeholder="-- Nhập câu lệnh SQL tại đây...\nSELECT * FROM SinhVien LIMIT 10;"></textarea>' +
+            '<textarea id="sql-editor" rows="9" style="width:100%; font-family:var(--font-mono); font-size:13px; padding:6px; background:var(--bg-panel); color:var(--text-main);" placeholder="-- Nhập câu lệnh SQL tại đây...\nSELECT * FROM ' + escapeHtml(getDefaultTableForDb(currentDbId)) + ' LIMIT 10;"></textarea>' +
           '</div>' +
           '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
             '<button class="default" id="btn-run-sql" style="font-weight:bold;">▶ Chạy Thử Lệnh (F5)</button>' +
@@ -1864,9 +1648,32 @@
     pane.innerHTML = html;
     pane.scrollTop = 0;
 
-    // Nạp bài tập vào cột trái
+    // Nạp bài tập hoặc hiển thị chế độ tự do
     if (currentProblem) {
       loadProblemIntoLab(currentProblem.id);
+    } else {
+      var banner = document.getElementById("lab-problem-banner");
+      var editor = document.getElementById("sql-editor");
+      if (banner) {
+        banner.innerHTML = '<div class="example-header">' +
+          '<span>🧪 <b>Chế độ Tự Do (Free SQL Sandbox)</b> <span class="badge-chuan">[CSDL: ' + escapeHtml(currentDbMeta.name || currentDbId) + ']</span></span>' +
+          '</div>' +
+          '<p style="margin:6px 0; font-size:13px;">Bạn đang ở chế độ tự do. Soạn và thực thi bất kỳ câu lệnh SQL nào (SELECT, INSERT, UPDATE, CREATE TABLE...) trên cơ sở dữ liệu <b>' + escapeHtml(currentDbMeta.name || currentDbId) + '</b> mà không bị ràng buộc bởi đề bài.</p>' +
+          '<div style="font-size:12px; color:var(--text-muted); line-height:1.5;">' +
+          '• Nhấn <b>▶ Chạy Thử Lệnh (F5)</b> để thực thi.<br>' +
+          '• Nhấn <b>🔍 EXPLAIN QUERY PLAN</b> để phân tích kế hoạch thực thi.<br>' +
+          '• Muốn làm bài tập có chấm điểm tự động, hãy chọn một bài từ dropdown <b>207 bài tập</b> ở trên!' +
+          '</div>';
+      }
+      if (editor) {
+        if (window._PENDING_LAB_SQL) {
+          editor.value = window._PENDING_LAB_SQL;
+          window._PENDING_LAB_SQL = null;
+          setTimeout(executeLabSql, 80);
+        } else {
+          editor.value = "-- Soạn câu lệnh SQL tự do trên CSDL: " + (currentDbMeta.name || currentDbId) + "\nSELECT * FROM " + getDefaultTableForDb(currentDbId) + " LIMIT 10;\n";
+        }
+      }
     }
   }
 
@@ -1925,7 +1732,10 @@
     }
 
     if (editor) {
-      if (problem.starter_sql) {
+      if (window._PENDING_LAB_SQL) {
+        editor.value = window._PENDING_LAB_SQL;
+        window._PENDING_LAB_SQL = null;
+      } else if (problem.starter_sql) {
         editor.value = problem.starter_sql;
       } else {
         editor.value = "-- Đề bài: " + problem.title + " (CSDL: " + problem.db + ")\n-- Nhập câu truy vấn SQL của bạn bên dưới:\n\n";
@@ -2835,9 +2645,9 @@
   /* ========================================================================
      11. ĐIỀU HƯỚNG TỔNG QUÁT (VIEW ROUTER)
      ======================================================================== */
-  function navigateTo(view, param, skipPushHistory) {
+  function navigateTo(view, param, skipPushHistory, scrollSecId, problemId) {
     if (!skipPushHistory) {
-      pushHistory(view, param);
+      pushHistory(view, param, scrollSecId);
     }
 
     // Đánh dấu active trên menu bar
@@ -2849,12 +2659,24 @@
       }
     });
 
+    // Cập nhật URL Hash
+    var newHash = "#/" + view;
+    if (param) newHash += "/" + param;
+    if (scrollSecId) newHash += "/" + scrollSecId;
+    if (window.location.hash !== newHash) {
+      if (history.replaceState) {
+        history.replaceState(null, "", newHash);
+      } else {
+        window.location.hash = newHash;
+      }
+    }
+
     if (view === "toc") {
       renderTocView();
     } else if (view === "chapter") {
-      renderChapterView(param || state.lastChapterId || "ch01");
+      renderChapterView(param || state.lastChapterId || "ch01", scrollSecId);
     } else if (view === "lab") {
-      renderLabView(param, null);
+      renderLabView(param, problemId || null);
     } else if (view === "simulators") {
       renderSimulatorsView(param);
     } else if (view === "interview") {
@@ -2869,11 +2691,22 @@
       renderAppendicesView();
     }
 
-    // Cập nhật highlight active trên Left TOC Tree
+    // Cập nhật highlight active trên Left TOC Tree mà KHÔNG làm sụp các nhánh đang mở
     document.querySelectorAll(".tree-item-link").forEach(function(a) {
       var navV = a.getAttribute("data-nav-view");
       var navCh = a.getAttribute("data-nav-ch");
-      if ((navV && navV === view) || (navCh && navCh === param)) {
+      var sSec = a.getAttribute("data-scroll-sec");
+      var isMatch = false;
+
+      if (scrollSecId && sSec === scrollSecId) {
+        isMatch = true;
+      } else if (!scrollSecId) {
+        if ((navV && navV === view) || (navCh && navCh === param)) {
+          isMatch = true;
+        }
+      }
+
+      if (isMatch) {
         a.classList.add("active");
         var parentDet = a.closest("details");
         if (parentDet && !parentDet.open) {
@@ -2890,6 +2723,23 @@
   /* ========================================================================
      12. BẮT SỰ KIỆN TOÀN CỤC (EVENT LISTENERS)
      ======================================================================== */
+  function handleHashRoute() {
+    var hash = window.location.hash || "";
+    if (!hash || hash.indexOf("#/") !== 0) return;
+    var parts = hash.substring(2).split("/").filter(Boolean);
+    if (!parts.length) return;
+
+    var view = parts[0];
+    var param = parts[1] || null;
+    var secId = parts[2] || null;
+
+    if (view === "fruitstore-130-drills" || view === "fruitstore130") {
+      view = "fruitstore130";
+    }
+
+    navigateTo(view, param, true, secId);
+  }
+
   function setupEventListeners() {
     // 1. Phím tắt trình duyệt và phím chức năng
     window.addEventListener("keydown", function(e) {
@@ -3013,46 +2863,63 @@
         return;
       }
 
-      // Cuộn tới section trong bài học
+      // Mở Schema DDL & ERD Modal từ nút trên trang TOC hoặc bất kỳ nơi nào (BUG-04)
+      var schemaBtn = target.closest("[data-open-schema-modal]");
+      if (schemaBtn) {
+        e.preventDefault();
+        var schemaDbId = schemaBtn.getAttribute("data-open-schema-modal") || state.activeDbId || "fruitstore";
+        showDbSchemaModal(schemaDbId);
+        return;
+      }
+
+      // Cuộn tới section trong bài học - Hỗ trợ nhảy xuyên trang (BUG-01)
       var scrollSecLink = target.closest("[data-scroll-sec]");
       if (scrollSecLink) {
         e.preventDefault();
+        var secId = scrollSecLink.getAttribute("data-scroll-sec");
+        var parentCh = scrollSecLink.getAttribute("data-parent-ch");
+
         document.querySelectorAll(".tree-item-link").forEach(function(el) {
           el.classList.remove("active");
         });
         scrollSecLink.classList.add("active");
-        var secId = scrollSecLink.getAttribute("data-scroll-sec");
-        var el = document.getElementById(secId);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth" });
+
+        if (state.lastView !== "chapter" || state.lastChapterId !== parentCh) {
+          navigateTo("chapter", parentCh, false, secId);
+        } else {
+          var el = document.getElementById(secId);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          if (history.replaceState) {
+            history.replaceState(null, "", "#/chapter/" + parentCh + "/" + secId);
+          } else {
+            window.location.hash = "/chapter/" + parentCh + "/" + secId;
+          }
+          updateAddressBar("http://bikip-sql-2005.msdn/chapter/" + parentCh + ".htm#" + secId);
         }
         return;
       }
 
-      // Đẩy SQL từ ví dụ vào Lab
+      // Đẩy SQL từ ví dụ vào Lab (BUG-05: Vào chế độ tự do, không ép về bài tập cũ)
       var pushLabBtn = target.closest("[data-push-lab-sql]");
       if (pushLabBtn) {
+        e.preventDefault();
         var rawSql = decodeURIComponent(pushLabBtn.getAttribute("data-push-lab-sql"));
         var labDb = pushLabBtn.getAttribute("data-lab-db") || state.activeDbId;
+        window._CURRENT_LAB_PROBLEM = null;
+        window._PENDING_LAB_SQL = rawSql;
         navigateTo("lab", labDb);
-        setTimeout(function() {
-          var editor = document.getElementById("sql-editor");
-          if (editor) editor.value = rawSql;
-          var btnRun = document.getElementById("btn-run-sql");
-          if (btnRun) btnRun.click();
-        }, 150);
         return;
       }
 
       // Mở bài tập trong Lab
       var openProbBtn = target.closest("[data-open-lab-problem]");
       if (openProbBtn) {
+        e.preventDefault();
         var pId = openProbBtn.getAttribute("data-open-lab-problem");
         var pDb = openProbBtn.getAttribute("data-db") || state.activeDbId;
-        navigateTo("lab", pDb);
-        setTimeout(function() {
-          loadProblemIntoLab(pId);
-        }, 150);
+        navigateTo("lab", pDb, false, null, pId);
         return;
       }
 
@@ -3412,28 +3279,82 @@
       };
     }
 
+    // Bộ co giãn thanh phân cách (#pane-splitter - BUG-11)
+    var paneSplitter = document.getElementById("pane-splitter");
+    var leftPane = document.getElementById("left-pane");
+    if (paneSplitter && leftPane) {
+      if (state.leftPaneWidth) {
+        leftPane.style.width = state.leftPaneWidth + "px";
+        leftPane.style.flex = "0 0 " + state.leftPaneWidth + "px";
+      }
+      var isDraggingSplitter = false;
+      var startX = 0;
+      var startWidth = 0;
+
+      paneSplitter.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        isDraggingSplitter = true;
+        startX = e.clientX;
+        startWidth = leftPane.getBoundingClientRect().width;
+        document.body.classList.add("resizing");
+        paneSplitter.classList.add("active");
+      });
+
+      window.addEventListener("mousemove", function(e) {
+        if (!isDraggingSplitter) return;
+        var delta = e.clientX - startX;
+        var newWidth = Math.max(180, Math.min(window.innerWidth * 0.6, startWidth + delta));
+        leftPane.style.width = newWidth + "px";
+        leftPane.style.flex = "0 0 " + newWidth + "px";
+        state.leftPaneWidth = Math.round(newWidth);
+      });
+
+      window.addEventListener("mouseup", function() {
+        if (isDraggingSplitter) {
+          isDraggingSplitter = false;
+          document.body.classList.remove("resizing");
+          paneSplitter.classList.remove("active");
+          saveState();
+        }
+      });
+
+      paneSplitter.addEventListener("dblclick", function() {
+        var defaultW = 300;
+        leftPane.style.width = defaultW + "px";
+        leftPane.style.flex = "0 0 " + defaultW + "px";
+        state.leftPaneWidth = defaultW;
+        saveState();
+      });
+    }
+
     // 4. Thanh địa chỉ (Address Bar)
     var btnAddressGo = document.getElementById("btn-address-go");
     var addressInput = document.getElementById("address-input");
     if (btnAddressGo && addressInput) {
       var handleGo = function() {
         var val = addressInput.value.trim();
-        if (val.indexOf("chm://") === 0) {
-          if (val.indexOf("/chapters/") !== -1) {
-            var match = val.match(/chapters\/([a-zA-Z0-9_-]+)/);
-            if (match) navigateTo("chapter", match[1].replace(".htm", ""));
-          } else if (val.indexOf("/sql-lab") !== -1) {
-            var mLab = val.match(/sql-lab\/([a-zA-Z0-9_-]+)/);
+        if (val.indexOf("chm://") === 0 || val.indexOf("http://") === 0) {
+          if (val.indexOf("/chapters/") !== -1 || val.indexOf("/chapter/") !== -1) {
+            var match = val.match(/chapter[s]?\/([a-zA-Z0-9_-]+)/);
+            if (match) {
+              var chId = match[1].replace(".htm", "");
+              var secMatch = val.match(/#(sec-[a-zA-Z0-9_-]+)/);
+              navigateTo("chapter", chId, false, secMatch ? secMatch[1] : null);
+            }
+          } else if (val.indexOf("fruitstore-130") !== -1 || val.indexOf("fruitstore130") !== -1) {
+            navigateTo("fruitstore130");
+          } else if (val.indexOf("/sql-lab") !== -1 || val.indexOf("/lab") !== -1) {
+            var mLab = val.match(/(?:sql-lab|lab)\/([a-zA-Z0-9_-]+)/);
             navigateTo("lab", mLab ? mLab[1] : state.activeDbId);
           } else if (val.indexOf("/simulators") !== -1) {
             var mSim = val.match(/simulators\/([a-zA-Z0-9_-]+)/);
             navigateTo("simulators", mSim ? mSim[1] : state.activeSimulatorId);
-          } else if (val.indexOf("/interview-room") !== -1) {
+          } else if (val.indexOf("/interview") !== -1) {
             navigateTo("interview");
-          } else if (val.indexOf("/notebook") !== -1) {
+          } else if (val.indexOf("/notebook") !== -1 || val.indexOf("/notes") !== -1) {
             navigateTo("notes");
-          } else if (val.indexOf("/expansion-tracks") !== -1) {
-            var mTrk = val.match(/expansion-tracks\/([a-zA-Z0-9_-]+)/);
+          } else if (val.indexOf("/expansion-tracks") !== -1 || val.indexOf("/tracks") !== -1) {
+            var mTrk = val.match(/(?:expansion-tracks|tracks)\/([a-zA-Z0-9_-]+)/);
             navigateTo("tracks", mTrk ? mTrk[1] : state.activeTrackId);
           } else if (val.indexOf("/appendices") !== -1) {
             navigateTo("appendices");
@@ -3510,17 +3431,23 @@
 
     // Bắt sự kiện Radio & Select trong Simulators, Interview & Lab
     document.addEventListener("change", function(e) {
-      // Đổi CSDL trong Lab
+      // Đổi CSDL trong Lab (BUG-03: Xóa bài tập cũ để vào Free Sandbox của CSDL mới)
       if (e.target.id === "lab-db-select") {
         state.activeDbId = e.target.value;
+        window._CURRENT_LAB_PROBLEM = null;
         saveState();
-        renderLabView(state.activeDbId);
+        renderLabView(state.activeDbId, null);
         return;
       }
 
-      // Đổi đề bài trong Lab (77 bài)
+      // Đổi đề bài trong Lab (207 bài hoặc chế độ tự do)
       if (e.target.id === "lab-problem-select") {
-        loadProblemIntoLab(e.target.value);
+        if (!e.target.value) {
+          window._CURRENT_LAB_PROBLEM = null;
+          renderLabView(state.activeDbId, null);
+        } else {
+          loadProblemIntoLab(e.target.value);
+        }
         return;
       }
 
@@ -3688,7 +3615,7 @@
     var problem = window._CURRENT_LAB_PROBLEM;
 
     if (!problem) {
-      showToast("Hiện tại chưa chọn đề bài nào. Hãy chọn 1 bài từ dropdown 77 bài tập phía trên!", true);
+      showToast("Hiện tại bạn đang ở Chế độ tự do. Hãy chọn 1 bài từ danh sách 207 bài tập phía trên để chấm điểm!", true);
       return;
     }
 
@@ -3847,7 +3774,7 @@
     if (newIdx >= 0 && newIdx < historyStack.length) {
       historyIndex = newIdx;
       var item = historyStack[historyIndex];
-      navigateTo(item.view, item.param, true);
+      navigateTo(item.view, item.param, true, item.scrollSecId);
       updateNavButtonsState();
     }
   }
@@ -3889,10 +3816,12 @@
     if (!modal || !body) return;
 
     if (title) title.textContent = "📋 Sơ Đồ ER & Schema CSDL: " + (dbMeta.name || dbId);
+    var erContent = dbMeta.er_ascii ? escapeHtml(dbMeta.er_ascii) : 'Chưa có sơ đồ ASCII';
+    var sqlContent = escapeHtml((dbMeta.schema_sql || '') + '\n\n' + (dbMeta.seed_sql || ''));
     body.innerHTML = '<h3>Sơ đồ thực thể kết hợp (ASCII ERD):</h3>' +
-      '<pre style="background:var(--bg-code); padding:6px; font-family:var(--font-mono);">' + (dbMeta.er_ascii || 'Chưa có sơ đồ ASCII') + '</pre>' +
+      '<pre style="background:var(--bg-code); padding:6px; font-family:var(--font-mono); overflow:auto; max-height:220px;">' + erContent + '</pre>' +
       '<h3>Cấu trúc bảng &amp; Dữ liệu mẫu (Schema &amp; Seed SQL):</h3>' +
-      '<pre class="code-block" style="max-height:240px; overflow:auto;"><code>' + (dbMeta.schema_sql || '') + '\n\n' + (dbMeta.seed_sql || '') + '</code></pre>';
+      '<pre class="code-block" style="max-height:240px; overflow:auto;"><code>' + sqlContent + '</code></pre>';
 
     modal.classList.add("active");
   }
@@ -3941,11 +3870,19 @@
   function initApp() {
     renderLeftTocTree();
     setupEventListeners();
+    updateOverallProgress();
+
+    // Lắng nghe sự kiện hashchange của trình duyệt
+    window.addEventListener("hashchange", handleHashRoute);
 
     // Khởi tạo SQLite WASM
     initSqlEngine(function(success) {
-      // Điều hướng tới view đã lưu hoặc TOC
-      navigateTo(state.lastView || "toc", (state.lastView === "chapter" ? state.lastChapterId : (state.lastView === "simulators" ? state.activeSimulatorId : state.activeDbId)));
+      if (window.location.hash && window.location.hash.startsWith("#/")) {
+        handleHashRoute();
+      } else {
+        // Điều hướng tới view đã lưu hoặc TOC
+        navigateTo(state.lastView || "toc", (state.lastView === "chapter" ? state.lastChapterId : (state.lastView === "simulators" ? state.activeSimulatorId : state.activeDbId)));
+      }
     });
   }
 
@@ -3955,6 +3892,7 @@
     getAll77LabProblems: getAll77LabProblems,
     gradeSqlProblem: gradeSqlProblem,
     explainSqlQuery: explainSqlQuery,
+    updateOverallProgress: updateOverallProgress,
     navigateTo: navigateTo,
     renderChapterView: renderChapterView,
     renderLabView: renderLabView,
@@ -3965,7 +3903,9 @@
     openExerciseInLab: window.openExerciseInLab,
     renderNotesView: renderNotesView,
     renderTocView: renderTocView,
-    renderLeftTocTree: renderLeftTocTree
+    renderLeftTocTree: renderLeftTocTree,
+    handleHashRoute: handleHashRoute,
+    showDbSchemaModal: showDbSchemaModal
   };
 
   // Chờ DOM sẵn sàng

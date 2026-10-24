@@ -41,13 +41,13 @@
         <div class="menu-items">
           <button class="menu-btn active" data-nav-view="toc"><u>F</u>ile (Mục lục)</button>
           <button class="menu-btn" data-nav-view="chapter"><u>V</u>iew (Bài học)</button>
-          <button class="menu-btn" data-nav-view="lab"><u>L</u>ab SQL (Thực hành)</button>
-          <button class="menu-btn" data-nav-view="simulators"><u>S</u>imulators (6 Mô phỏng)</button>
-          <button class="menu-btn" data-nav-view="interview"><u>I</u>nterview &amp; LeetCode</button>
-          <button class="menu-btn" data-nav-view="fruitstore130"><u>🍎</u> FruitStore (130 Bài)</button>
-          <button class="menu-btn" data-nav-view="notes"><u>N</u>otes (Sổ tay 3 dòng)</button>
-          <button class="menu-btn" data-nav-view="tracks"><u>T</u>racks (MySQL/PG/NoSQL)</button>
-          <button class="menu-btn" data-nav-view="appendices"><u>A</u>ppendices (Phụ lục)</button>
+          <button class="menu-btn" data-nav-view="lab"><u>L</u>ab SQL</button>
+          <button class="menu-btn" data-nav-view="simulators"><u>S</u>imulators (6)</button>
+          <button class="menu-btn" data-nav-view="interview"><u>I</u>nterview (48)</button>
+          <button class="menu-btn" data-nav-view="fruitstore130"><u>D</u>rills (130 Bài)</button>
+          <button class="menu-btn" data-nav-view="notes"><u>N</u>otes (Sổ tay)</button>
+          <button class="menu-btn" data-nav-view="tracks"><u>T</u>racks (Mở rộng)</button>
+          <button class="menu-btn" data-nav-view="appendices"><u>A</u>ppendices</button>
           <button class="menu-btn" id="btn-open-shortcuts"><u>H</u>elp (F1)</button>
         </div>
         <div class="retro-progress-wrap" title="Tiến độ hoàn thành khóa học &amp; bài tập Lab">
@@ -155,8 +155,13 @@
           </div>
         </aside>
 
+        <!-- Thanh kéo chia cột 3D chuẩn Microsoft HTML Help Viewer -->
+        <div id="pane-splitter" title="Kéo để thay đổi độ rộng cột Mục lục (Hoặc nhấn đúp để mặc định 300px)" role="separator" aria-orientation="vertical"></div>
+
         <!-- Right Reading Pane (Sunken Panel) -->
         <main id="reading-pane" class="sunken-panel" tabindex="0" aria-label="Nội dung chính">
+          <!-- Được render động bởi src/ui/app-engine.js -->
+        </main>
           <!-- Được render động bởi src/ui/app-engine.js -->
         </main>
       </div>

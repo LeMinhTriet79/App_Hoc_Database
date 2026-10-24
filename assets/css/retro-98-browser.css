@@ -1162,3 +1162,236 @@ body.theme-crt .drill-card.drill-solved {
   flex-wrap: wrap;
   margin-top: 8px;
 }
+
+/* ==========================================================================
+   15. MASTER RETRO 2000s MSDN .CHM & IE 5.5 VISUAL POLISH PATCH
+   Khắc phục triệt để: Viền kép Tablist, Rớt dòng Header, Thẻ phẳng hiện đại,
+   Cây thư mục rớt dòng dưới dấu [+], Thanh kéo Splitter 3D & Tương phản 4 Themes
+   ========================================================================== */
+
+/* 15.1. Tinh gọn 4 tầng Header (Titlebar + Menubar + Toolbar + Addressbar) không bị rớt dòng */
+#title-bar.title-bar {
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 1px 4px !important;
+}
+
+#menu-bar {
+  min-height: 24px !important;
+  padding: 1px 4px !important;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-dark);
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+}
+
+.menu-items {
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
+  gap: 1px !important;
+}
+
+.menu-btn {
+  padding: 2px 6px !important;
+  font-size: 11.5px !important;
+  white-space: nowrap;
+}
+
+#tool-bar {
+  min-height: 28px !important;
+  padding: 2px 4px !important;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-dark);
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+  gap: 3px !important;
+}
+
+#tool-bar button {
+  height: 22px !important;
+  padding: 1px 6px !important;
+  font-size: 11px !important;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+#browser-address-bar {
+  min-height: 26px !important;
+  padding: 2px 4px !important;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-dark);
+  flex-wrap: nowrap !important;
+  overflow-x: auto;
+}
+
+.quick-links-bar {
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
+}
+
+/* 15.2. Xóa bỏ viền kép (Double Border) ở 3 Tab cột trái (Nội dung | Chỉ mục | Tìm kiếm) */
+#left-pane menu[role="tablist"].left-tabs {
+  margin: 0 0 -2px 0 !important;
+  padding: 0 0 0 2px !important;
+  gap: 0 !important;
+}
+
+#left-pane menu[role="tablist"].left-tabs li[role="tab"].left-tab {
+  border: none !important; /* Để 98.css tự vẽ box-shadow 3D chuẩn Win98 */
+  background: var(--bg-window) !important;
+  padding: 0 !important;
+  min-width: 72px;
+}
+
+#left-pane menu[role="tablist"].left-tabs li[role="tab"].left-tab[aria-selected="true"] {
+  background: var(--bg-window) !important;
+  z-index: 3;
+}
+
+#left-pane menu[role="tablist"].left-tabs li[role="tab"] a {
+  display: block !important;
+  padding: 4px 8px !important;
+  color: var(--text-main) !important;
+  text-decoration: none !important;
+  font-family: var(--font-ui) !important;
+  font-size: 11px !important;
+  user-select: none;
+}
+
+/* 15.3. Thanh kéo chia cột 3D (#pane-splitter) chuẩn Microsoft HTML Help */
+#workspace {
+  gap: 0 !important;
+  padding: 3px !important;
+}
+
+#pane-splitter {
+  width: 5px;
+  min-width: 5px;
+  cursor: col-resize;
+  background: var(--bg-window);
+  border-left: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-dkdk);
+  flex-shrink: 0;
+  position: relative;
+  user-select: none;
+}
+
+#pane-splitter::after {
+  content: "⋮";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  color: var(--border-dark);
+  line-height: 1;
+}
+
+#pane-splitter:hover,
+body.resizing-pane #pane-splitter {
+  background: var(--accent-soft);
+}
+
+#left-pane.collapsed + #pane-splitter {
+  display: none !important;
+}
+
+body.resizing-pane {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+/* 15.4. Sửa lỗi Cây mục lục (ul.tree-view): Chống rớt chữ xuống dưới dấu [+] của <summary> */
+#toc-tree-container.tree-view summary {
+  display: list-item !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 1px 2px !important;
+  line-height: 1.4;
+}
+
+#toc-tree-container.tree-view summary > a.tree-item-link {
+  display: inline !important;
+  padding: 1px 4px !important;
+  white-space: nowrap;
+}
+
+#toc-tree-container.tree-view ul > li > a.tree-item-link {
+  display: block !important;
+  padding: 2px 4px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 15.5. Đồng bộ hóa nội dung bài học bên trong #reading-pane theo chuẩn MSDN Library 2000 Classic */
+.ch-banner {
+  background: var(--bg-table-head) !important;
+  border-top: 2px solid var(--border-light) !important;
+  border-left: 2px solid var(--border-light) !important;
+  border-right: 2px solid var(--border-dkdk) !important;
+  border-bottom: 2px solid var(--border-dkdk) !important;
+  box-shadow: inset 1px 1px 0 var(--bg-panel), inset -1px -1px 0 var(--border-dark);
+  padding: 10px 14px !important;
+  margin-bottom: 16px !important;
+}
+
+.ch-banner h1 {
+  font-family: "Tahoma", "MS Sans Serif", sans-serif !important;
+  font-size: 1.35em !important;
+  color: var(--accent) !important;
+  margin: 4px 0 !important;
+}
+
+.section-card {
+  background: var(--bg-card) !important;
+  border-top: 1px solid var(--border-light) !important;
+  border-left: 1px solid var(--border-light) !important;
+  border-right: 1px solid var(--border-dkdk) !important;
+  border-bottom: 1px solid var(--border-dkdk) !important;
+  box-shadow: 0 0 0 1px var(--border-dark);
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+  scroll-margin-top: 12px;
+}
+
+.section-card h2 {
+  background: linear-gradient(90deg, var(--bg-table-head), transparent);
+  padding: 4px 8px !important;
+  margin: -4px -8px 10px -8px !important;
+  border-left: 4px solid var(--accent) !important;
+  border-bottom: 1px solid var(--border-dark) !important;
+  font-family: "Tahoma", "MS Sans Serif", sans-serif !important;
+  font-size: 1.12em !important;
+  color: var(--accent) !important;
+}
+
+pre.code-block,
+.er-box {
+  border-top: 2px solid var(--border-dkdk) !important;
+  border-left: 2px solid var(--border-dkdk) !important;
+  border-right: 2px solid var(--border-light) !important;
+  border-bottom: 2px solid var(--border-light) !important;
+  background: var(--bg-code) !important;
+  color: var(--text-code) !important;
+  padding: 8px 10px !important;
+}
+
+.badge-chuan,
+.badge-tsql {
+  border-radius: 0 !important;
+  border-top: 1px solid var(--border-light);
+  border-left: 1px solid var(--border-light);
+  border-right: 1px solid var(--border-dkdk);
+  border-bottom: 1px solid var(--border-dkdk);
+  padding: 1px 5px !important;
+  font-size: 11px !important;
+}
+
+/* Sửa lỗi mù chữ trên Theme Borland & CRT cho thẻ bài tập đã giải */
+.drill-card.drill-solved {
+  border-left: 5px solid var(--ok-color) !important;
+  background: var(--bg-table-alt) !important;
+  color: var(--text-main) !important;
+}
