@@ -238,24 +238,25 @@
    5. TẦNG 4: 2000s INTERNET EXPLORER 5.5 ADDRESS BAR & QUICK LINKS
    -------------------------------------------------------------------------- */
 #browser-address-bar {
-  min-height: 30px;
+  min-height: 26px;
   background: var(--bg-window);
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-dark);
   padding: 2px 6px;
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap !important;
   gap: 6px;
   flex-shrink: 0;
+  overflow: hidden !important;
 }
 
 .address-field-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1;
-  min-width: 260px;
+  flex: 1 1 auto;
+  min-width: 120px;
   margin: 0 !important;
 }
 
@@ -265,10 +266,12 @@
   color: var(--text-muted);
   user-select: none;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .address-input-wrap {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   background: var(--bg-panel);
@@ -284,10 +287,12 @@
   font-size: 12px;
   margin-right: 4px;
   user-select: none;
+  flex-shrink: 0;
 }
 
 #address-input {
   width: 100%;
+  min-width: 0;
   height: 18px;
   font-family: var(--font-mono);
   font-size: 12px;
@@ -304,6 +309,7 @@
   font-size: 11px;
   font-weight: bold;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .quick-links-bar {
@@ -313,7 +319,9 @@
   font-size: 11px;
   border-left: 2px groove var(--border-light);
   padding-left: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap !important;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .quick-link-btn {
@@ -321,12 +329,15 @@
   padding: 1px 6px !important;
   height: 21px !important;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .ie-throbber {
   width: 22px;
   height: 22px;
   min-width: 22px;
+  max-width: 22px;
+  max-height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -337,18 +348,31 @@
   border-right: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
   font-size: 13px;
+  line-height: 1;
   user-select: none;
-  transition: transform 0.2s ease;
+  overflow: hidden !important;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.ie-throbber .ie-throbber-icon,
+.ie-throbber span {
+  display: inline-block;
+  line-height: 1;
+  transform-origin: center center;
 }
 
 .ie-throbber.loading {
-  animation: retro-spin 1s linear infinite;
   background: #008080;
+}
+
+.ie-throbber.loading .ie-throbber-icon,
+.ie-throbber.loading span {
+  animation: retro-spin 0.8s linear infinite;
 }
 
 @keyframes retro-spin {
   0% { transform: rotate(0deg); }
-  50% { transform: scale(1.15) rotate(180deg); }
   100% { transform: rotate(360deg); }
 }
 
@@ -1200,7 +1224,7 @@ body.theme-crt .drill-card.drill-solved {
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-dark);
   flex-wrap: nowrap !important;
-  overflow-x: auto;
+  overflow: hidden !important;
 }
 
 .menu-items {
@@ -1221,7 +1245,7 @@ body.theme-crt .drill-card.drill-solved {
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-dark);
   flex-wrap: nowrap !important;
-  overflow-x: auto;
+  overflow: hidden !important;
   gap: 3px !important;
 }
 
@@ -1239,7 +1263,7 @@ body.theme-crt .drill-card.drill-solved {
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-dark);
   flex-wrap: nowrap !important;
-  overflow-x: auto;
+  overflow: hidden !important;
 }
 
 .quick-links-bar {
