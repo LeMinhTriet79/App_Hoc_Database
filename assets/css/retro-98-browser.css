@@ -899,3 +899,214 @@ body.theme-crt #status-bar .status-bar-field {
     border: 1px solid #cccccc !important;
   }
 }
+
+/* ==========================================================================
+   13. KHẮC PHỤC XUNG ĐỘT LAYOUT, BỐ CỤC 2 CỘT LAB & ĐỒ HỌA TRỰC QUAN SIMULATORS
+   ========================================================================== */
+
+/* Đảm bảo khung đọc chính luôn cuộn mượt và dùng đúng biến cỡ chữ */
+#reading-pane.sunken-panel {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  padding: 16px 20px !important;
+  background: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+  font-family: var(--font-read);
+  font-size: var(--reading-font-size, 15px);
+  line-height: 1.62;
+}
+
+/* Sửa xung đột tablist cột trái giữa layout.css cũ và 98.css */
+#left-pane menu[role="tablist"].left-tabs {
+  display: flex !important;
+  margin: 0 0 -2px 0 !important;
+  padding: 0 0 0 2px !important;
+  border-bottom: none !important;
+  background: transparent !important;
+}
+
+#left-pane .left-tab-panel.window {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0;
+  padding: 6px;
+}
+
+#left-pane .left-tab-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#toc-tree-container.tree-view {
+  flex: 1;
+  overflow-y: auto !important;
+  overflow-x: auto;
+  padding: 6px !important;
+  margin: 0 !important;
+  background: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+}
+
+/* Bố cục 2 cột chuyên nghiệp cho Phòng Thực Hành SQL */
+.lab-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 43%) minmax(340px, 57%);
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .lab-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Khung vẽ Sơ đồ ER ASCII rõ nét */
+.er-box {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.35;
+  background: var(--bg-code);
+  color: var(--text-code);
+  border: 1px solid var(--border-dark);
+  padding: 10px 12px;
+  overflow-x: auto;
+  white-space: pre;
+  margin: 6px 0;
+}
+
+/* Hộp Ví dụ, Bài tập và Gợi ý 3 tầng */
+.example-box, .exercise-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed var(--border-dark);
+  font-weight: bold;
+}
+
+.hint-tier {
+  background: var(--bg-table-alt);
+  border: 1px solid var(--border-dark);
+  padding: 6px 10px;
+  margin: 5px 0;
+}
+
+/* Đồ họa trực quan cho 6 Bộ Mô Phỏng (SVG Venn, B+Tree 3 tầng, Pipeline, Deadlock) */
+.sim-visual-canvas {
+  background: var(--bg-table-alt);
+  border: 2px inset var(--border-dark);
+  padding: 12px;
+  margin: 10px 0 14px 0;
+}
+
+.btree-tier-root {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.btree-node-box {
+  padding: 8px 12px;
+  border: 2px solid var(--border-dark);
+  background: var(--bg-card);
+  color: var(--text-main);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  transition: all 0.15s ease;
+}
+
+.btree-node-box.active-seek {
+  border: 2px solid var(--ok-color);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--ok-color);
+  font-weight: bold;
+}
+
+.btree-node-box.scanned-page {
+  border-color: var(--err-color);
+}
+
+.btree-tier-int {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.btree-tier-leaf {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+  gap: 8px;
+}
+
+.pipeline-steps-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin: 10px 0;
+  padding: 8px;
+  background: var(--bg-window);
+  border: 1px solid var(--border-dark);
+}
+
+.pipeline-step-pill {
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid var(--border-dark);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.pipeline-step-pill.active {
+  background: var(--accent);
+  color: var(--title-text);
+  border-color: var(--border-dkdk);
+}
+
+.pipeline-step-pill.done {
+  border-color: var(--ok-color);
+  color: var(--ok-color);
+}
+
+/* Kết quả chấm bài tự động */
+.grade-pass {
+  background: var(--accent-soft);
+  border: 2px solid var(--ok-color);
+  color: var(--ok-color);
+  padding: 10px 12px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.grade-fail {
+  background: var(--warn-bg);
+  border: 2px solid var(--err-color);
+  color: var(--err-color);
+  padding: 10px 12px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}

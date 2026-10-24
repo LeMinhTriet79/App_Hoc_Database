@@ -177,6 +177,49 @@
   /* ========================================================================
      4. MÁY CHẤM BÀI TỰ ĐỘNG (DETERMINISTIC SQL AUTO-GRADER)
      ======================================================================== */
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function stripHtml(html) {
+    if (!html) return "";
+    return String(html).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Render bảng kết quả tĩnh từ cấu trúc { cols: [...], rows: [[...]] } của ch01..ch15.js
+   */
+  function renderStaticTableHtml(resultObj) {
+    if (!resultObj || !Array.isArray(resultObj.cols) || resultObj.cols.length === 0) {
+      return "";
+    }
+    var rows = Array.isArray(resultObj.rows) ? resultObj.rows : [];
+    var html = '<div class="sunken-panel" style="overflow-x:auto; margin-top:6px;">' +
+      '<table class="interactive chm-table" style="margin:0;"><thead><tr>';
+    resultObj.cols.forEach(function(col) {
+      html += '<th>' + escapeHtml(col) + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    rows.forEach(function(row) {
+      html += '<tr>';
+      row.forEach(function(cell) {
+        if (cell === null || cell === undefined) {
+          html += '<td><i style="color:var(--text-muted);">&lt;NULL&gt;</i></td>';
+        } else {
+          html += '<td>' + escapeHtml(cell) + '</td>';
+        }
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
   function normalizeVal(val) {
     if (val === null || val === undefined) return null;
     if (typeof val === "number") return Number(val.toFixed(4));
@@ -186,14 +229,97 @@
     return str.toLowerCase();
   }
 
+  function getAll77LabProblems() {
+    var list = [];
+    (DATA.chapters || []).forEach(function(ch, cIdx) {
+      var chCode = ch.code || ("Chương " + (ch.num || (cIdx + 1)));
+      (ch.basics || []).forEach(function(b, bIdx) {
+        var pid = b.id || (ch.id + "_b" + (b.num || (bIdx + 1)));
+        list.push({
+          id: pid,
+          chId: ch.id,
+          chCode: chCode,
+          title: b.title || ("Bài cơ bản " + (bIdx + 1)),
+          difficulty: "Cơ bản",
+          db: b.db || "truonghoc",
+          prompt: b.problem || b.prompt || b.summary || "",
+          h1: (b.hints && b.hints[0]) || b.intuition || "Xác định bảng nguồn và điều kiện lọc.",
+          h2: (b.hints && b.hints[1]) || b.trace || "Kiểm tra các cột cần SELECT và thứ tự ORDER BY.",
+          solSql: b.sql || b.solution_sql || "",
+          expected: b.expected || b.expected_output || null,
+          required_keywords: b.required_keywords || [],
+          forbidden_keywords: b.forbidden_keywords || [],
+          order_matters: !!b.order_matters,
+          note3: {
+            idea: b.intuition || (ch.goals && ch.goals[0]) || "",
+            syntax: (b.hints && b.hints[1]) || "",
+            trap: (ch.common_errors && ch.common_errors[0]) || ""
+          }
+        });
+      });
+      (ch.practice || []).forEach(function(p, pIdx) {
+        var pid = p.id || (ch.id + "_p" + (pIdx + 1));
+        list.push({
+          id: pid,
+          chId: ch.id,
+          chCode: chCode,
+          title: p.title || ("Bài thực hành " + (pIdx + 1)),
+          difficulty: p.difficulty || "Thực hành",
+          db: p.db || "shoponline",
+          prompt: p.summary || p.prompt || p.problem || "",
+          h1: p.understand || (p.hints && p.hints[0]) || "Phân tích mối quan hệ giữa các bảng.",
+          h2: p.optimal || (p.hints && p.hints[1]) || "Viết truy vấn tối ưu và kiểm tra NULL.",
+          solSql: p.sql || p.solution_sql || "",
+          expected: p.expected || p.expected_output || null,
+          required_keywords: p.required_keywords || [],
+          forbidden_keywords: p.forbidden_keywords || [],
+          order_matters: !!p.order_matters,
+          note3: p.note3 || {
+            idea: p.understand || "",
+            syntax: p.optimal || "",
+            trap: p.pitfalls || ""
+          }
+        });
+      });
+    });
+
+    (DATA.leetcode_challenges || []).forEach(function(lc) {
+      list.push({
+        id: lc.id,
+        chId: "ch14",
+        chCode: "LeetCode #" + lc.lc_num,
+        title: lc.title,
+        difficulty: lc.difficulty || "Trung bình",
+        db: lc.db || "leetcode",
+        prompt: lc.prompt || "",
+        h1: (lc.hints && lc.hints[0]) || lc.pattern || lc.hint || "",
+        h2: (lc.hints && lc.hints[1]) || "",
+        solSql: lc.solution_sql || lc.sql || "",
+        expected: lc.expected || null,
+        starter_sql: lc.starter_sql || "",
+        required_keywords: lc.required_keywords || [],
+        forbidden_keywords: lc.forbidden_keywords || [],
+        order_matters: !!lc.order_matters,
+        note3: {
+          idea: "Mẫu bài toán: " + (lc.pattern || lc.title),
+          syntax: lc.solution_sql || "",
+          trap: (lc.hints && lc.hints[0]) || ""
+        }
+      });
+    });
+
+    return list;
+  }
+
   function gradeSqlProblem(problem, userSql) {
-    if (!sqlEngineReady) {
+    if (!sqlEngineReady || !SQL) {
       return { pass: false, msg: "SQLite WASM chưa nạp xong. Vui lòng thử lại sau vài giây." };
     }
-
     var dbId = problem.db || state.activeDbId;
-    if (!sqlDatabases[dbId]) {
-      return { pass: false, msg: "Không tìm thấy CSDL: " + dbId };
+    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
+    var dbMeta = dbs.find(function(d) { return d.id === dbId; });
+    if (!dbMeta) {
+      return { pass: false, msg: "Không tìm thấy cấu hình CSDL: " + dbId };
     }
 
     var cleanSql = (userSql || "").trim();
@@ -201,87 +327,109 @@
       return { pass: false, msg: "Bạn chưa nhập câu lệnh SQL nào!" };
     }
 
-    // 1. Kiểm tra từ khóa bắt buộc (required_keywords)
+    // 1. Kiểm tra từ khóa bắt buộc / bị cấm (nếu có)
     if (Array.isArray(problem.required_keywords)) {
       for (var i = 0; i < problem.required_keywords.length; i++) {
         var kw = problem.required_keywords[i];
         var reg = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
         if (!reg.test(cleanSql)) {
-          return { pass: false, msg: "Câu lệnh của bạn bắt buộc phải sử dụng từ khóa: " + kw };
+          return { pass: false, msg: "Câu lệnh của bạn cần sử dụng từ khóa: " + kw };
         }
       }
     }
-
-    // 2. Kiểm tra từ khóa bị cấm (forbidden_keywords)
     if (Array.isArray(problem.forbidden_keywords)) {
       for (var j = 0; j < problem.forbidden_keywords.length; j++) {
         var fkw = problem.forbidden_keywords[j];
         var fReg = new RegExp(fkw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
         if (fReg.test(cleanSql)) {
-          return { pass: false, msg: "Câu lệnh vi phạm quy tắc: CẤM sử dụng từ khóa " + fkw };
+          return { pass: false, msg: "Câu lệnh vi phạm quy tắc: Không được dùng " + fkw };
         }
       }
     }
 
-    // 3. Thực thi câu lệnh của người dùng
-    var userExec;
+    // 2. Tạo bản sao CSDL sạch trong RAM để chấm điểm nhất quán (hỗ trợ cả DML INSERT/UPDATE/DELETE)
+    var tempUserDb = new SQL.Database();
+    var userRes = { columns: [], values: [] };
     try {
-      userExec = sqlDatabases[dbId].exec(cleanSql);
+      if (dbMeta.schema_sql) tempUserDb.run(dbMeta.schema_sql);
+      if (dbMeta.seed_sql) tempUserDb.run(dbMeta.seed_sql);
+      var uExec = tempUserDb.exec(cleanSql);
+      if (uExec && uExec.length > 0) {
+        userRes = uExec[uExec.length - 1];
+      }
     } catch (err) {
+      tempUserDb.close();
       return { pass: false, msg: "Lỗi cú pháp SQL: " + err.message };
     }
+    tempUserDb.close();
 
-    if (!userExec || userExec.length === 0) {
-      // Trường hợp không trả về dòng nào
-      if (!problem.solution_sql) {
-        return { pass: false, msg: "Câu lệnh không trả về tập kết quả nào." };
+    // 3. Lấy tập kết quả chuẩn từ problem.expected HOẶC chạy problem.solSql / problem.solution_sql
+    var solCols = [];
+    var solVals = [];
+    if (problem.expected && Array.isArray(problem.expected.cols)) {
+      solCols = problem.expected.cols;
+      solVals = problem.expected.rows || [];
+    } else {
+      var refSql = problem.solSql || problem.solution_sql || problem.sql || "";
+      if (!refSql) {
+        return { pass: false, msg: "Bài tập này chưa có câu lệnh đáp án tham chiếu." };
       }
+      var tempSolDb = new SQL.Database();
+      try {
+        if (dbMeta.schema_sql) tempSolDb.run(dbMeta.schema_sql);
+        if (dbMeta.seed_sql) tempSolDb.run(dbMeta.seed_sql);
+        var sExec = tempSolDb.exec(refSql);
+        if (sExec && sExec.length > 0) {
+          solCols = sExec[sExec.length - 1].columns;
+          solVals = sExec[sExec.length - 1].values;
+        }
+      } catch (sErr) {
+        tempSolDb.close();
+        return { pass: false, msg: "Lỗi khi chạy đáp án chuẩn: " + sErr.message };
+      }
+      tempSolDb.close();
     }
 
-    var userRes = userExec[0] || { columns: [], values: [] };
+    var userFormatted = { cols: userRes.columns || [], rows: userRes.values || [] };
+    var solFormatted = { cols: solCols, rows: solVals };
 
-    // 4. Lấy kết quả chuẩn từ solution_sql
-    var solExec;
-    try {
-      solExec = sqlDatabases[dbId].exec(problem.solution_sql);
-    } catch (solErr) {
-      return { pass: false, msg: "Lỗi nội bộ khi chạy đáp án chuẩn: " + solErr.message };
-    }
-
-    var solRes = solExec[0] || { columns: [], values: [] };
-
-    // 5. Đối chiếu số cột
-    if (userRes.columns.length !== solRes.columns.length) {
+    // 4. Đối chiếu số cột và số dòng
+    if (userFormatted.cols.length !== solFormatted.cols.length) {
       return {
         pass: false,
-        msg: "Số cột kết quả không khớp: Bạn trả về " + userRes.columns.length + " cột, nhưng đáp án yêu cầu " + solRes.columns.length + " cột."
+        msg: "Sai số lượng cột: Câu lệnh của bạn trả về " + userFormatted.cols.length + " cột (" + userFormatted.cols.join(", ") + "), nhưng đáp án yêu cầu " + solFormatted.cols.length + " cột (" + solFormatted.cols.join(", ") + ").",
+        userTable: userFormatted,
+        expectedTable: solFormatted
       };
     }
 
-    // 6. Đối chiếu số dòng
-    if (userRes.values.length !== solRes.values.length) {
+    if (userFormatted.rows.length !== solFormatted.rows.length) {
       return {
         pass: false,
-        msg: "Số dòng kết quả không khớp: Câu lệnh trả về " + userRes.values.length + " dòng (đáp án chuẩn có " + solRes.values.length + " dòng)."
+        msg: "Sai số lượng dòng: Câu lệnh của bạn trả về " + userFormatted.rows.length + " dòng, nhưng đáp án chuẩn có " + solFormatted.rows.length + " dòng.",
+        userTable: userFormatted,
+        expectedTable: solFormatted
       };
     }
 
-    // 7. Đối chiếu giá trị từng dòng
-    var userRows = userRes.values.map(function(r) { return r.map(normalizeVal); });
-    var solRows = solRes.values.map(function(r) { return r.map(normalizeVal); });
+    // 5. Chuẩn hóa và đối chiếu từng ô dữ liệu
+    var uRows = userFormatted.rows.map(function(r) { return r.map(normalizeVal); });
+    var eRows = solFormatted.rows.map(function(r) { return r.map(normalizeVal); });
 
-    if (problem.order_matters === false) {
+    if (!problem.order_matters) {
       var sortFn = function(a, b) { return JSON.stringify(a).localeCompare(JSON.stringify(b)); };
-      userRows.sort(sortFn);
-      solRows.sort(sortFn);
+      uRows.sort(sortFn);
+      eRows.sort(sortFn);
     }
 
-    for (var r = 0; r < solRows.length; r++) {
-      for (var c = 0; c < solRows[r].length; c++) {
-        if (userRows[r][c] !== solRows[r][c]) {
+    for (var r = 0; r < eRows.length; r++) {
+      for (var c = 0; c < eRows[r].length; c++) {
+        if (uRows[r][c] !== eRows[r][c]) {
           return {
             pass: false,
-            msg: "Dữ liệu dòng #" + (r + 1) + " cột '" + userRes.columns[c] + "' chưa đúng: Nhận được '" + userRes.values[r][c] + "', kỳ vọng '" + solRes.values[r][c] + "'."
+            msg: "Sai lệch dữ liệu tại dòng #" + (r + 1) + " (cột '" + solFormatted.cols[c] + "'): Giá trị của bạn là '" + userFormatted.rows[r][c] + "', trong khi đáp án chuẩn là '" + solFormatted.rows[r][c] + "'." + (problem.order_matters ? " (Lưu ý: Bài này có kiểm tra thứ tự sắp xếp ORDER BY)." : ""),
+            userTable: userFormatted,
+            expectedTable: solFormatted
           };
         }
       }
@@ -289,9 +437,11 @@
 
     return {
       pass: true,
-      msg: "XUẤT SẮC! Kết quả hoàn toàn trùng khớp 100% với đáp án chuẩn của phòng Lab.",
-      rowCount: userRes.values.length,
-      colCount: userRes.columns.length
+      msg: "CHÍNH XÁC 100%! Tập kết quả (" + solFormatted.rows.length + " dòng, " + solFormatted.cols.length + " cột) hoàn toàn khớp với đáp án chuẩn!",
+      rowCount: solFormatted.rows.length,
+      colCount: solFormatted.cols.length,
+      userTable: userFormatted,
+      expectedTable: solFormatted
     };
   }
 
@@ -361,6 +511,30 @@
     var container = document.getElementById("toc-tree-container");
     if (!container) return;
 
+    function renderChapterTreeItem(chObj) {
+      if (!chObj) return "";
+      var chId = chObj.id;
+      var chCode = chObj.code || chId;
+      var html = '<li><details><summary><a href="#' + chId + '" class="tree-item-link" data-nav-ch="' + chId + '">' + escapeHtml(chCode + ': ' + chObj.title) + '</a></summary><ul>';
+      html += '<li><a href="#' + chId + '-s1" class="tree-item-link" data-scroll-sec="sec-goals">1. Mục tiêu &amp; Dấu hiệu</a></li>';
+      html += '<li><a href="#' + chId + '-s2" class="tree-item-link" data-scroll-sec="sec-theory">2. Lý thuyết nền tảng</a></li>';
+      html += '<li><a href="#' + chId + '-s3" class="tree-item-link" data-scroll-sec="sec-mechanism">3. Cơ chế chạy tay</a></li>';
+      if (chId === "ch15") {
+        html += '<li><a href="#ch15-kw" class="tree-item-link" data-scroll-sec="sec-keyword-cards">3B. Từ điển 64 thẻ T-SQL</a></li>';
+      }
+      html += '<li><a href="#' + chId + '-s4" class="tree-item-link" data-scroll-sec="sec-examples">4. Cú pháp &amp; Ví dụ (' + (chObj.examples ? chObj.examples.length : 0) + ')</a></li>';
+      html += '<li><a href="#' + chId + '-s5" class="tree-item-link" data-scroll-sec="sec-dialects">5. Khác biệt phương ngữ</a></li>';
+      html += '<li><a href="#' + chId + '-s6" class="tree-item-link" data-scroll-sec="sec-bridge">6. Cầu nối Java &amp; C#</a></li>';
+      html += '<li><a href="#' + chId + '-s7" class="tree-item-link" data-scroll-sec="sec-perf">7. Hiệu năng &amp; Chi phí</a></li>';
+      html += '<li><a href="#' + chId + '-s8" class="tree-item-link" data-scroll-sec="sec-errors">8. Lỗi hay gặp (' + (chObj.common_errors ? chObj.common_errors.length : 0) + ')</a></li>';
+      html += '<li><a href="#' + chId + '-s9" class="tree-item-link" data-scroll-sec="sec-interview">9. Câu hỏi phỏng vấn (' + (chObj.interview ? chObj.interview.length : 0) + ')</a></li>';
+      var probCount = (chObj.basics ? chObj.basics.length : 0) + (chObj.practice ? chObj.practice.length : 0);
+      html += '<li><a href="#' + chId + '-s10" class="tree-item-link" data-scroll-sec="sec-exercises">10. Bài tập tự chấm (' + probCount + ')</a></li>';
+      html += '<li><a href="#' + chId + '-s11" class="tree-item-link" data-scroll-sec="sec-summary">11. Tổng kết &amp; Trắc nghiệm</a></li>';
+      html += '</ul></details></li>';
+      return html;
+    }
+
     var html = '';
     html += '<li><a href="#toc" class="tree-item-link ' + (state.lastView === "toc" ? "active" : "") + '" data-nav-view="toc">🏠 Bảng Mục Lục Tổng Quan</a></li>';
 
@@ -370,21 +544,7 @@
     for (var i = 1; i <= 5; i++) {
       var chId = "ch0" + i;
       var chObj = (DATA.chapters || []).find(function(c) { return c.id === chId; });
-      if (chObj) {
-        html += '<li><details><summary><a href="#' + chId + '" class="tree-item-link" data-nav-ch="' + chId + '">' + (chObj.code || chId) + ': ' + chObj.title + '</a></summary><ul>';
-        html += '<li><a href="#' + chId + '-s1" class="tree-item-link" data-scroll-sec="sec-goals">1. Mục tiêu &amp; Dấu hiệu</a></li>';
-        html += '<li><a href="#' + chId + '-s2" class="tree-item-link" data-scroll-sec="sec-theory">2. Lý thuyết nền tảng</a></li>';
-        html += '<li><a href="#' + chId + '-s3" class="tree-item-link" data-scroll-sec="sec-mechanism">3. Cơ chế chạy tay</a></li>';
-        html += '<li><a href="#' + chId + '-s4" class="tree-item-link" data-scroll-sec="sec-examples">4. Cú pháp &amp; Ví dụ (' + (chObj.examples ? chObj.examples.length : 0) + ')</a></li>';
-        html += '<li><a href="#' + chId + '-s5" class="tree-item-link" data-scroll-sec="sec-dialects">5. Khác biệt phương ngữ</a></li>';
-        html += '<li><a href="#' + chId + '-s6" class="tree-item-link" data-scroll-sec="sec-bridge">6. Cầu nối Java &amp; C#</a></li>';
-        html += '<li><a href="#' + chId + '-s7" class="tree-item-link" data-scroll-sec="sec-perf">7. Hiệu năng &amp; Chi phí</a></li>';
-        html += '<li><a href="#' + chId + '-s8" class="tree-item-link" data-scroll-sec="sec-errors">8. Lỗi hay gặp</a></li>';
-        html += '<li><a href="#' + chId + '-s9" class="tree-item-link" data-scroll-sec="sec-interview">9. Câu hỏi phỏng vấn</a></li>';
-        html += '<li><a href="#' + chId + '-s10" class="tree-item-link" data-scroll-sec="sec-exercises">10. Bài tập tự chấm</a></li>';
-        html += '<li><a href="#' + chId + '-s11" class="tree-item-link" data-scroll-sec="sec-summary">11. Tổng kết &amp; Trắc nghiệm</a></li>';
-        html += '</ul></details></li>';
-      }
+      if (chObj) html += renderChapterTreeItem(chObj);
     }
     html += '</ul></details></li>';
 
@@ -393,9 +553,7 @@
     for (var j = 6; j <= 10; j++) {
       var chId2 = (j < 10 ? "ch0" : "ch") + j;
       var chObj2 = (DATA.chapters || []).find(function(c) { return c.id === chId2; });
-      if (chObj2) {
-        html += '<li><a href="#' + chId2 + '" class="tree-item-link" data-nav-ch="' + chId2 + '">' + (chObj2.code || chId2) + ': ' + chObj2.title + '</a></li>';
-      }
+      if (chObj2) html += renderChapterTreeItem(chObj2);
     }
     html += '</ul></details></li>';
 
@@ -404,16 +562,16 @@
     for (var k = 11; k <= 14; k++) {
       var chId3 = "ch" + k;
       var chObj3 = (DATA.chapters || []).find(function(c) { return c.id === chId3; });
-      if (chObj3) {
-        html += '<li><a href="#' + chId3 + '" class="tree-item-link" data-nav-ch="' + chId3 + '">' + (chObj3.code || chId3) + ': ' + chObj3.title + '</a></li>';
-      }
+      if (chObj3) html += renderChapterTreeItem(chObj3);
     }
     html += '</ul></details></li>';
 
     // Nhóm 4: Chương 15
     var ch15 = (DATA.chapters || []).find(function(c) { return c.id === "ch15"; });
     if (ch15) {
-      html += '<li><a href="#ch15" class="tree-item-link" data-nav-ch="ch15">🍍 Chương 15: Từ Điển T-SQL &amp; FruitStore Lab</a></li>';
+      html += '<li><details open><summary>🍍 Phần IV: Từ Điển T-SQL &amp; FruitStore Lab (Ch15)</summary><ul>';
+      html += renderChapterTreeItem(ch15);
+      html += '</ul></details></li>';
     }
 
     // Nhóm 5: Các Phân Khu Chức Năng
@@ -588,13 +746,35 @@
     });
 
     html += '</tbody></table></div>';
+
+    // 7 Sơ Đồ Thực Thể Liên Kết (ERD ASCII) Của 7 CSDL Mẫu (Khôi phục theo BUG-01 & TASK FIX 04)
+    html += '<h2 style="margin-top:24px;">Sơ Đồ Thực Thể Liên Kết (ERD ASCII) Của 7 Cơ Sở Dữ Liệu Mẫu</h2>';
+    html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:12px; margin-top:10px;">';
+    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
+    dbs.forEach(function(db) {
+      html += '<div class="window" style="display:flex; flex-direction:column;">' +
+        '<div class="title-bar">' +
+          '<div class="title-bar-text">🗄️ ' + escapeHtml(db.name || db.id) + ' (' + (db.tables ? db.tables.length : 0) + ' bảng)</div>' +
+        '</div>' +
+        '<div class="window-body" style="flex:1; display:flex; flex-direction:column; padding:8px;">' +
+          '<p style="margin:2px 0 6px 0; font-size:12px; color:var(--text-muted);">' + escapeHtml(db.desc || "") + '</p>' +
+          (db.er_ascii ? '<div class="er-box" style="flex:1; max-height:220px; margin-bottom:8px;">' + escapeHtml(db.er_ascii) + '</div>' : '') +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:4px;">' +
+            '<button data-open-schema-modal="' + escapeHtml(db.id) + '">📋 Xem Schema DDL</button>' +
+            '<button class="default" data-nav-view="lab" data-param="' + escapeHtml(db.id) + '">🧪 Mở CSDL Này Trong Lab ►</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    });
+    html += '</div>';
+
     html += '</div>';
 
     pane.innerHTML = html;
     pane.scrollTop = 0;
   }
 
-  function renderChapterView(chapterId) {
+  function renderChapterView(chapterId, scrollSecId) {
     state.lastView = "chapter";
     state.lastChapterId = chapterId;
     updateAddressBar("chm://bikip-csdl-v2005/chapters/" + chapterId + ".htm");
@@ -604,167 +784,661 @@
 
     if (chapterId === "ch00") {
       updateStatusCell(2, "📘 Chương 0: Nền Tảng CSDL");
-      pane.innerHTML = DATA.ch0_html || "<p>Chưa có nội dung Chương 0.</p>";
+      var ch0Html = '<div class="chapter-content-wrap">' +
+        (DATA.ch0_html || "<p>Chưa có nội dung Chương 0.</p>") +
+        '<div class="section-card" style="display:flex; justify-content:space-between; align-items:center;">' +
+        '<button data-nav-view="toc">◄ Về Bảng Mục Lục</button>' +
+        '<button class="default" data-nav-ch="ch01">Chương 1: SELECT, NULL &amp; Kiểu Dữ Liệu ►</button>' +
+        '</div></div>';
+      pane.innerHTML = ch0Html;
       pane.scrollTop = 0;
       return;
     }
 
-    var ch = (DATA.chapters || []).find(function(c) { return c.id === chapterId; });
+    var chIdx = (DATA.chapters || []).findIndex(function(c) { return c.id === chapterId; });
+    var ch = chIdx !== -1 ? DATA.chapters[chIdx] : null;
     if (!ch) {
-      pane.innerHTML = '<div class="callout-warn">Không tìm thấy nội dung chương: ' + chapterId + '</div>';
+      pane.innerHTML = '<div class="callout-warn">Không tìm thấy nội dung chương: ' + escapeHtml(chapterId) + '</div>';
       return;
     }
 
-    updateStatusCell(2, "📘 " + (ch.code || ch.id) + ": " + ch.title);
+    var chCode = ch.code || ("Chương " + (ch.num || (chIdx + 1)));
+    updateStatusCell(2, "📘 " + chCode + ": " + ch.title);
+
+    var topicKey = "topic_" + ch.id;
+    var isTopicDone = !!state.completedItems[topicKey];
+    var langMode = state.langMode || "both";
 
     var html = '<div class="chapter-content-wrap">';
 
-    // Banner
+    // Banner chương + Checkbox hoàn thành lý thuyết chương
     html += '<div class="ch-banner">' +
-      '<div class="ch-code">' + (ch.code || chapterId).toUpperCase() + '</div>' +
-      '<h1>' + ch.title + '</h1>' +
-      '<div class="ch-source">Tài liệu tham khảo: ' + (Array.isArray(ch.sources) ? ch.sources.join("; ") : (ch.sources || "Giáo trình tiêu chuẩn")) + '</div>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">' +
+        '<div class="ch-code">' + escapeHtml(chCode.toUpperCase()) + ' // GIÁO TRÌNH &amp; PHÒNG LAB CSDL THỰC CHIẾN</div>' +
+        '<div class="field-row" style="background:var(--bg-window); padding:2px 8px; border:1px solid var(--border-dark);">' +
+          '<input type="checkbox" id="chk-topic-' + escapeHtml(ch.id) + '" data-toggle-done="' + escapeHtml(topicKey) + '" ' + (isTopicDone ? 'checked' : '') + '>' +
+          '<label for="chk-topic-' + escapeHtml(ch.id) + '"><b>Đánh dấu đã nắm vững chương này</b></label>' +
+        '</div>' +
+      '</div>' +
+      '<h1>' + escapeHtml(chCode + ': ' + ch.title) + '</h1>' +
+      '<div class="ch-source">Tài liệu tham khảo: ' + escapeHtml(Array.isArray(ch.sources) ? ch.sources.join("; ") : (ch.sources || "Giáo trình tiêu chuẩn")) + '</div>' +
       '</div>';
 
     // Mục 1: Mục tiêu & Dấu hiệu nhận biết
-    html += '<section class="section-card" id="sec-goals"><h2>1. Mục Tiêu &amp; Dấu Hiệu Nhận Biết</h2>';
+    html += '<section class="section-card" id="sec-goals"><h2>1. Mục Tiêu Chương &amp; Dấu Hiệu Nhận Biết Thực Tế</h2>';
     if (ch.goals && ch.goals.length) {
-      html += '<h3>Mục tiêu cốt lõi:</h3><ul>';
-      ch.goals.forEach(function(g) { html += '<li>' + g + '</li>'; });
+      html += '<h3>🎯 Mục tiêu cốt lõi cần đạt:</h3><ul>';
+      ch.goals.forEach(function(g) { html += '<li>' + escapeHtml(g) + '</li>'; });
       html += '</ul>';
     }
     if (ch.signals && ch.signals.length) {
-      html += '<h3>Khi nào cần dùng (Dấu hiệu thực tế):</h3><ul>';
-      ch.signals.forEach(function(s) { html += '<li>' + s + '</li>'; });
+      html += '<h3>🔍 Dấu hiệu nhận biết khi làm dự án Backend hoặc đi phỏng vấn:</h3><ul>';
+      ch.signals.forEach(function(s) { html += '<li>' + escapeHtml(s) + '</li>'; });
       html += '</ul>';
     }
     html += '</section>';
 
     // Mục 2: Lý thuyết nền tảng
     if (ch.theory) {
-      html += '<section class="section-card" id="sec-theory"><h2>2. Lý Thuyết Nền Tảng &amp; Cú Pháp</h2>';
-      if (typeof ch.theory === "string") {
-        html += ch.theory;
-      } else if (Array.isArray(ch.theory)) {
-        ch.theory.forEach(function(sec) {
-          html += '<h3>' + sec.title + '</h3><div>' + (sec.content || sec.html || '') + '</div>';
-        });
-      } else if (typeof ch.theory === "object") {
-        Object.keys(ch.theory).forEach(function(k) {
-          html += '<div>' + ch.theory[k] + '</div>';
-        });
-      }
+      html += '<section class="section-card" id="sec-theory"><h2>2. Lý Thuyết Cốt Lõi &amp; Định Nghĩa Chính Xác</h2>';
+      html += (typeof ch.theory === "string") ? ch.theory : JSON.stringify(ch.theory);
       html += '</section>';
     }
 
-    // Mục 3: Cơ chế & Chạy tay từng bước
+    // Mục 3: Cơ chế & Chạy tay từng bước (+ Nút nhảy sang Simulator tương ứng)
+    var simMap = { ch03: "join", ch04: "exec_order", ch07: "normalization", ch08: "btree", ch09: "isolation", ch11: "injection" };
+    var linkedSim = simMap[ch.id];
     if (ch.mechanism) {
-      html += '<section class="section-card" id="sec-mechanism"><h2>3. Cơ Chế Hoạt Động &amp; Chạy Tay Từng Bước</h2>';
-      html += '<div>' + (typeof ch.mechanism === "string" ? ch.mechanism : JSON.stringify(ch.mechanism)) + '</div>';
-      html += '</section>';
+      html += '<section class="section-card" id="sec-mechanism">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:2px solid var(--accent); padding-bottom:6px; margin-bottom:10px;">' +
+          '<h2 style="border:none; margin:0; padding:0;">3. Cơ Chế Hoạt Động &amp; Chạy Tay Từng Bước</h2>' +
+          (linkedSim ? '<button class="default" data-nav-sim="' + linkedSim + '">🔬 Mở Bộ Mô Phỏng Trực Quan Của Chương Này ►</button>' : '') +
+        '</div>' +
+        '<div>' + (typeof ch.mechanism === "string" ? ch.mechanism : JSON.stringify(ch.mechanism)) + '</div>' +
+      '</section>';
     }
 
-    // Mục 4: Ví dụ thực tế
+    // Mục 3B: BÁCH KHOA TOÀN THƯ 64 THẺ TỪ KHÓA T-SQL 4 PHẦN (Dành cho Chương 15)
+    if (Array.isArray(ch.keyword_cards) && ch.keyword_cards.length > 0) {
+      html += renderChapter15KeywordDictionary(ch);
+    }
+
+    // Mục 4: Cú pháp & Ví dụ thực tế (kèm bảng kết quả mẫu ex.result!)
     if (ch.examples && ch.examples.length) {
-      html += '<section class="section-card" id="sec-examples"><h2>4. Cú Pháp &amp; Các Ví Dụ Thực Tế (' + ch.examples.length + ')</h2>';
+      html += '<section class="section-card" id="sec-examples"><h2>4. Cú Pháp &amp; Các Ví Dụ Thực Chiến Trên CSDL Mẫu (' + ch.examples.length + ' ví dụ)</h2>';
       ch.examples.forEach(function(ex, idx) {
-        html += '<fieldset class="retro-groupbox"><legend>Ví dụ ' + (idx + 1) + ': ' + ex.title + '</legend>';
-        html += '<pre class="code-block"><code>' + (ex.sql || '') + '</code></pre>';
-        if (ex.note) html += '<p><i>Ghi chú:</i> ' + ex.note + '</p>';
-        if (ex.sql) {
-          html += '<button data-push-lab-sql="' + encodeURIComponent(ex.sql) + '" data-lab-db="' + (ex.db || state.activeDbId) + '">🧪 Đẩy vào SQL Lab chạy thử</button>';
-        }
-        html += '</fieldset>';
+        var lbl = (ex.label || ex.tag || "CHUAN").toUpperCase();
+        var isChuan = lbl.indexOf("CHU") !== -1;
+        var badgeHtml = isChuan
+          ? '<span class="badge-chuan">[CHUẨN - Chạy trực tiếp trong Lab]</span>'
+          : '<span class="badge-tsql">[T-SQL - Minh họa SQL Server]</span>';
+        var noteText = ex.note || ex.desc || "";
+
+        html += '<div class="example-box">' +
+          '<div class="example-header">' +
+            '<span>' + escapeHtml(ex.title || ("Ví dụ " + (idx + 1))) + ' ' + badgeHtml + ' <small style="color:var(--text-muted);">(CSDL: ' + escapeHtml(ex.db || "truonghoc") + ')</small></span>' +
+            '<div style="display:flex; gap:4px;">' +
+              '<button data-copy-text="' + encodeURIComponent(ex.sql || "") + '">📋 Sao chép SQL</button>' +
+              (ex.sql ? '<button class="default" data-push-lab-sql="' + encodeURIComponent(ex.sql) + '" data-lab-db="' + escapeHtml(ex.db || state.activeDbId) + '">🧪 Đẩy vào SQL Lab</button>' : '') +
+            '</div>' +
+          '</div>' +
+          '<pre class="code-block"><code>' + escapeHtml(ex.sql || "") + '</code></pre>' +
+          (noteText ? '<div style="margin:6px 0; font-size:0.92em;"><b>Giải thích:</b> ' + escapeHtml(noteText) + '</div>' : '') +
+          (ex.result && ex.result.cols ? '<div style="font-size:0.88em; font-weight:bold; margin-top:6px;">📊 Bảng kết quả minh họa (' + (ex.result.rows ? ex.result.rows.length : 0) + ' dòng):</div>' + renderStaticTableHtml(ex.result) : '') +
+        '</div>';
       });
       html += '</section>';
     }
 
-    // Mục 5: Khác biệt phương ngữ
+    // Mục 5: Khác biệt phương ngữ (Hỗ trợ chuẩn mảng 2 chiều [[feature, tsql, mysql, pg]] của ch01..ch15.js)
     if (ch.dialects && ch.dialects.length) {
-      html += '<section class="section-card" id="sec-dialects"><h2>5. Khác Biệt Phương Ngữ (T-SQL vs SQLite vs Postgres/MySQL)</h2>';
-      html += '<div class="sunken-panel"><table class="interactive chm-table"><thead><tr><th>Tính năng</th><th>SQL Server (T-SQL)</th><th>SQLite (Lab)</th><th>PostgreSQL / MySQL</th></tr></thead><tbody>';
+      html += '<section class="section-card" id="sec-dialects"><h2>5. Khác Biệt Phương Ngữ (SQL Server vs MySQL vs PostgreSQL / SQLite)</h2>';
+      html += '<div class="sunken-panel" style="overflow-x:auto;"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>Tác vụ / Khía cạnh</th><th>SQL Server (T-SQL)</th><th>MySQL (InnoDB)</th><th>PostgreSQL / SQLite</th></tr></thead><tbody>';
       ch.dialects.forEach(function(d) {
-        html += '<tr><td><b>' + (d.feature || '') + '</b></td><td><code>' + (d.tsql || '') + '</code></td><td><code>' + (d.sqlite || '') + '</code></td><td><code>' + (d.postgres_mysql || d.other || '') + '</code></td></tr>';
+        if (Array.isArray(d)) {
+          html += '<tr><td><b>' + escapeHtml(d[0] || "") + '</b></td><td><code>' + escapeHtml(d[1] || "") + '</code></td><td><code>' + escapeHtml(d[2] || "") + '</code></td><td><code>' + escapeHtml(d[3] || "") + '</code></td></tr>';
+        } else if (d && typeof d === "object") {
+          html += '<tr><td><b>' + escapeHtml(d.feature || "") + '</b></td><td><code>' + escapeHtml(d.tsql || "") + '</code></td><td><code>' + escapeHtml(d.mysql || d.sqlite || "") + '</code></td><td><code>' + escapeHtml(d.postgres_mysql || d.pg || d.other || "") + '</code></td></tr>';
+        }
       });
       html += '</tbody></table></div></section>';
     }
 
-    // Mục 6: Cầu nối Java & C#
-    html += '<section class="section-card" id="sec-bridge"><h2>6. Cầu Nối Backend Java (JDBC / JPA) &amp; C# (.NET / EF Core)</h2>';
-    if (ch.bridge_java) {
-      html += '<fieldset class="retro-groupbox"><legend>☕ Java (JDBC / Spring Data JPA)</legend><div>' + ch.bridge_java + '</div></fieldset>';
+    // Mục 6: Cầu nối Backend Java & C# (Bọc trong <pre class="code-block"><code> & lọc theo langMode)
+    html += '<section class="section-card" id="sec-bridge">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:2px solid var(--accent); padding-bottom:6px; margin-bottom:10px;">' +
+        '<h2 style="border:none; margin:0; padding:0;">6. Cầu Nối Ứng Dụng Backend (Java JDBC/JPA &amp; C# ADO.NET/EF Core)</h2>' +
+        '<span style="font-size:11px; color:var(--text-muted);">Đang hiển thị: <b>' + (langMode === "java" ? "Chỉ Java" : (langMode === "csharp" ? "Chỉ C# (.NET)" : "Song ngữ Java & C#")) + '</b></span>' +
+      '</div>';
+    if ((langMode === "both" || langMode === "java") && ch.bridge_java) {
+      html += '<fieldset class="retro-groupbox" style="margin-bottom:10px;"><legend>☕ Java Backend (JDBC / Spring Data JPA / Hibernate)</legend>' +
+        '<div style="text-align:right; margin-bottom:4px;"><button data-copy-text="' + encodeURIComponent(ch.bridge_java) + '">📋 Sao chép mã Java</button></div>' +
+        '<pre class="code-block"><code>' + escapeHtml(ch.bridge_java) + '</code></pre></fieldset>';
     }
-    if (ch.bridge_csharp) {
-      html += '<fieldset class="retro-groupbox"><legend>🔷 C# (.NET / Dapper / Entity Framework Core)</legend><div>' + ch.bridge_csharp + '</div></fieldset>';
+    if ((langMode === "both" || langMode === "csharp") && ch.bridge_csharp) {
+      html += '<fieldset class="retro-groupbox"><legend>🟣 C# .NET Backend (ADO.NET / Dapper / Entity Framework Core)</legend>' +
+        '<div style="text-align:right; margin-bottom:4px;"><button data-copy-text="' + encodeURIComponent(ch.bridge_csharp) + '">📋 Sao chép mã C#</button></div>' +
+        '<pre class="code-block"><code>' + escapeHtml(ch.bridge_csharp) + '</code></pre></fieldset>';
     }
     html += '</section>';
 
     // Mục 7: Hiệu năng & Chi phí
     if (ch.performance) {
-      html += '<section class="section-card" id="sec-perf"><h2>7. Hiệu Năng, Chi Phí I/O &amp; Execution Plan</h2><div>' + ch.performance + '</div></section>';
+      html += '<section class="section-card" id="sec-perf"><h2>7. Phân Tích Hiệu Năng, Chi Phí I/O &amp; Execution Plan</h2><div>' + ch.performance + '</div></section>';
     }
 
-    // Mục 8: Lỗi hay gặp
+    // Mục 8: Lỗi hay gặp (Hỗ trợ chuẩn mảng chuỗi của ch01..ch15.js)
     if (ch.common_errors && ch.common_errors.length) {
-      html += '<section class="section-card" id="sec-errors"><h2>8. Các Bẫy &amp; Lỗi Hay Gặp Cần Tránh</h2>';
-      ch.common_errors.forEach(function(err, idx) {
-        html += '<fieldset class="retro-groupbox"><legend>Lỗi #' + (idx + 1) + ': ' + (err.title || err.name || 'Cảnh báo') + '</legend>';
-        if (err.wrong) html += '<p style="color:var(--err-color);">❌ <b>Cách viết sai:</b> <code>' + err.wrong + '</code></p>';
-        if (err.right) html += '<p style="color:var(--ok-color);">✅ <b>Cách viết đúng:</b> <code>' + err.right + '</code></p>';
-        if (err.why) html += '<p><i>Giải thích:</i> ' + err.why + '</p>';
-        html += '</fieldset>';
-      });
-      html += '</section>';
-    }
-
-    // Mục 9: Phỏng vấn
-    if (ch.interview && ch.interview.length) {
-      html += '<section class="section-card" id="sec-interview"><h2>9. Câu Hỏi Phỏng Vấn Doanh Nghiệp</h2>';
-      ch.interview.forEach(function(iv, idx) {
-        html += '<fieldset class="retro-groupbox"><legend>Câu hỏi ' + (idx + 1) + ' [' + (iv.level || 'Junior') + ']</legend>';
-        html += '<p><b>Hỏi:</b> ' + (iv.q || '') + '</p>';
-        html += '<details><summary><b>Xem câu trả lời chuẩn &amp; câu hỏi xoáy</b></summary>';
-        html += '<p><b>Trả lời:</b> ' + (iv.a || '') + '</p>';
-        if (iv.followup) html += '<p style="color:var(--accent);"><b>Câu hỏi xoáy:</b> ' + iv.followup + '</p>';
-        html += '</details></fieldset>';
-      });
-      html += '</section>';
-    }
-
-    // Mục 10: Bài tập tự chấm
-    var exercises = (ch.basics || []).concat(ch.practice || []);
-    if (exercises.length) {
-      html += '<section class="section-card" id="sec-exercises"><h2>10. Bài Tập Thực Hành Có Chấm Tự Động (' + exercises.length + ' bài)</h2>';
-      exercises.forEach(function(ex, idx) {
-        var pId = ex.id || (ch.id + "_ex_" + idx);
-        var isDone = !!state.completedItems[pId];
-        html += '<fieldset class="retro-groupbox"><legend>' + (isDone ? '✅ ' : '📝 ') + 'Bài ' + (idx + 1) + ': ' + (ex.title || '') + '</legend>';
-        html += '<p>' + (ex.problem || ex.summary || '') + '</p>';
-        if (ex.hints && ex.hints.length) {
-          html += '<details style="margin-bottom:8px;"><summary>💡 Xem 3 tầng gợi ý</summary><ul>';
-          ex.hints.forEach(function(h) { html += '<li>' + h + '</li>'; });
-          html += '</ul></details>';
+      html += '<section class="section-card" id="sec-errors"><h2>8. Các Bẫy &amp; Lỗi Hay Gặp Trong Thực Tế (' + ch.common_errors.length + ' lỗi điển hình)</h2><ol style="padding-left:20px; margin:0;">';
+      ch.common_errors.forEach(function(err) {
+        if (typeof err === "string") {
+          html += '<li style="margin-bottom:8px;"><b>⚠️ Cạm bẫy:</b> ' + escapeHtml(err) + '</li>';
+        } else if (err && typeof err === "object") {
+          html += '<li style="margin-bottom:8px;"><b>' + escapeHtml(err.title || err.name || "Cảnh báo") + ':</b> ' +
+            (err.wrong ? '<br><span style="color:var(--err-color);">❌ Sai: <code>' + escapeHtml(err.wrong) + '</code></span>' : '') +
+            (err.right ? '<br><span style="color:var(--ok-color);">✅ Đúng: <code>' + escapeHtml(err.right) + '</code></span>' : '') +
+            (err.why ? '<br><i>Giải thích:</i> ' + escapeHtml(err.why) : '') + '</li>';
         }
-        html += '<button class="default" data-open-lab-problem="' + pId + '" data-ch="' + ch.id + '" data-db="' + (ex.db || state.activeDbId) + '">🧪 Mở trong Phòng Lab để viết code &amp; Chấm bài</button>';
-        html += '</fieldset>';
+      });
+      html += '</ol></section>';
+    }
+
+    // Mục 9: Câu hỏi phỏng vấn trọng tâm của chương (Đọc chuẩn a_short, a_long, full)
+    if (ch.interview && ch.interview.length) {
+      html += '<section class="section-card" id="sec-interview"><h2>9. Câu Hỏi Phỏng Vấn Doanh Nghiệp Trọng Tâm Của Chương</h2>';
+      ch.interview.forEach(function(iv, idx) {
+        var shortAns = iv.a_short || iv.a || iv.full || "";
+        var longAns = iv.a_long || iv.followup || "";
+        html += '<fieldset class="retro-groupbox"><legend>🎯 Câu hỏi ' + (idx + 1) + ' — Cấp độ: [' + escapeHtml(iv.level || "Junior") + ']</legend>' +
+          '<p style="margin:4px 0 8px 0;"><b>❓ Hỏi:</b> ' + escapeHtml(iv.q || "") + '</p>' +
+          '<div style="background:var(--bg-table-alt); padding:8px; border-left:3px solid var(--ok-color); margin-bottom:6px;"><b>✅ Trả lời cốt lõi (15 giây đầu):</b> ' + escapeHtml(shortAns) + '</div>' +
+          (longAns ? '<details><summary style="cursor:pointer; font-weight:bold; color:var(--accent);">📚 Xem phân tích chuyên sâu &amp; câu hỏi xoáy ăn điểm tối đa...</summary>' +
+            '<div style="padding:8px; margin-top:4px; background:var(--bg-card); border:1px solid var(--border-dark);">' + escapeHtml(longAns) + '</div></details>' : '') +
+          '</fieldset>';
       });
       html += '</section>';
     }
 
-    // Mục 11: Tổng kết
-    html += '<section class="section-card" id="sec-summary"><h2>11. Tổng Kết &amp; Ghi Chú 3 Dòng</h2>';
-    html += '<p>Áp dụng <b>Quy tắc ghi chú 3 dòng</b>: Tóm tắt 3 điều đọng lại sâu sắc nhất từ chương này:</p>';
-    var currentNote = state.notes3Line[ch.id] || "";
-    html += '<div class="field-row-stacked">' +
-      '<textarea id="ch-note-input" rows="3" placeholder="Dòng 1: Khái niệm mấu chốt...\nDòng 2: Cú pháp / Bẫy cần nhớ...\nDòng 3: Bài học thực chiến Java/C#..." style="width:100%; font-family:var(--font-mono);">' + currentNote + '</textarea>' +
-      '<div style="margin-top:4px;"><button id="btn-save-note" data-ch="' + ch.id + '">💾 Lưu ghi chú (Tối đa 3 dòng)</button></div>' +
+    // Mục 10: Bài tập cơ bản (basics) & Bài luyện tập nâng cao (practice)
+    var basicsList = ch.basics || [];
+    var practiceList = ch.practice || [];
+    if (basicsList.length || practiceList.length) {
+      html += '<section class="section-card" id="sec-exercises"><h2>10. Bài Tập Thực Hành Có Máy Chấm Tự Động (' + (basicsList.length + practiceList.length) + ' bài)</h2>';
+
+      if (basicsList.length) {
+        html += '<h3>10.1. Bài tập cơ bản (Làm quen cú pháp &amp; Gợi ý 3 tầng)</h3>';
+        basicsList.forEach(function(b, idx) {
+          var pId = b.id || (ch.id + "_b" + (b.num || (idx + 1)));
+          var isDone = !!state.completedItems[pId];
+          var promptText = b.problem || b.prompt || b.summary || "";
+          var h1 = (b.hints && b.hints[0]) || b.intuition || "Xác định bảng nguồn và điều kiện lọc.";
+          var h2 = (b.hints && b.hints[1]) || b.trace || "Kiểm tra các cột cần SELECT và thứ tự ORDER BY.";
+          var solSql = b.sql || b.solution_sql || "";
+          var expObj = b.expected || b.expected_output || null;
+
+          html += '<div class="exercise-box">' +
+            '<div class="example-header">' +
+              '<span>' + (isDone ? '✅ ' : '📝 ') + escapeHtml(b.title || ("Bài cơ bản " + (idx + 1))) + ' <span class="badge-chuan">[DB: ' + escapeHtml(b.db || "truonghoc") + ']</span></span>' +
+              '<button class="default" data-open-lab-problem="' + escapeHtml(pId) + '" data-db="' + escapeHtml(b.db || state.activeDbId) + '">🧪 Giải &amp; Chấm Điểm Trong Phòng Lab ►</button>' +
+            '</div>' +
+            '<p style="margin:6px 0;"><b>Đề bài:</b> ' + escapeHtml(promptText) + '</p>' +
+            '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">💡 Gợi ý tầng 1 (Hướng tư duy)</summary><p style="margin:4px 0;">' + escapeHtml(h1) + '</p></details></div>' +
+            '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">🧩 Gợi ý tầng 2 (Chạy tay &amp; Khung câu lệnh)</summary><p style="margin:4px 0;">' + (b.trace ? '<b>Chạy tay:</b> ' + escapeHtml(b.trace) + '<br>' : '') + '<b>Gợi ý:</b> <code>' + escapeHtml(h2) + '</code></p></details></div>' +
+            '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">🔑 Gợi ý tầng 3 (Lời giải SQL chuẩn &amp; Bảng kết quả mẫu)</summary>' +
+              '<pre class="code-block"><code>' + escapeHtml(solSql) + '</code></pre>' +
+              (expObj ? renderStaticTableHtml(expObj) : '') +
+            '</details></div>' +
+          '</div>';
+        });
+      }
+
+      if (practiceList.length) {
+        html += '<h3>10.2. Bài luyện tập thực chiến (Phân tích Ngây thơ vs Tối ưu &amp; Bẫy thường gặp)</h3>';
+        practiceList.forEach(function(p, idx) {
+          var pId = p.id || (ch.id + "_p" + (idx + 1));
+          var isDone = !!state.completedItems[pId];
+          var promptText = p.summary || p.prompt || p.problem || "";
+          var solSql = p.sql || p.solution_sql || "";
+          var expObj = p.expected || p.expected_output || null;
+
+          html += '<div class="exercise-box">' +
+            '<div class="example-header">' +
+              '<span>' + (isDone ? '✅ ' : '🔥 ') + escapeHtml(p.title || ("Bài thực hành " + (idx + 1))) + ' ' + (p.difficulty ? '(' + escapeHtml(p.difficulty) + ') ' : '') + '<span class="badge-chuan">[DB: ' + escapeHtml(p.db || "shoponline") + ']</span></span>' +
+              '<button class="default" data-open-lab-problem="' + escapeHtml(pId) + '" data-db="' + escapeHtml(p.db || state.activeDbId) + '">⚡ Thực Hành &amp; Tự Chấm Trong Lab ►</button>' +
+            '</div>' +
+            '<p style="margin:6px 0;"><b>Đề bài:</b> ' + escapeHtml(promptText) + '</p>';
+
+          if (p.understand || p.brute || p.optimal || p.pitfalls) {
+            html += '<ul style="margin:6px 0 10px 0; padding-left:20px;">' +
+              (p.understand ? '<li><b>Phân tích yêu cầu:</b> ' + escapeHtml(p.understand) + '</li>' : '') +
+              (p.brute ? '<li><b>Cách tiếp cận ngây thơ (Brute-force):</b> ' + escapeHtml(p.brute) + '</li>' : '') +
+              (p.optimal ? '<li><b>Giải pháp SQL tối ưu (Optimal):</b> ' + escapeHtml(p.optimal) + '</li>' : '') +
+              (p.pitfalls ? '<li style="color:var(--err-color);"><b>Bẫy dễ vấp:</b> ' + escapeHtml(p.pitfalls) + '</li>' : '') +
+            '</ul>';
+          } else if (Array.isArray(p.hints) && p.hints.length) {
+            html += '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">💡 Xem gợi ý từng bước</summary><ul>' +
+              p.hints.map(function(h) { return '<li>' + escapeHtml(h) + '</li>'; }).join('') + '</ul></details></div>';
+          }
+
+          html += '<details><summary style="cursor:pointer; font-weight:bold; color:var(--accent);">🔑 Xem lời giải SQL chuẩn &amp; Bảng kết quả đối chiếu...</summary>' +
+            '<pre class="code-block"><code>' + escapeHtml(solSql) + '</code></pre>' +
+            (expObj ? renderStaticTableHtml(expObj) : '') +
+            '</details></div>';
+        });
+      }
+      html += '</section>';
+    }
+
+    // Mục 11: Bảng tóm tắt (summary_table) + 3 Câu hỏi tự kiểm tra (quiz) + Ghi chú 3 dòng
+    html += '<section class="section-card" id="sec-summary"><h2>11. Bảng Tóm Tắt Kiến Thức, Tự Kiểm Tra &amp; Ghi Chú 3 Dòng</h2>';
+    if (ch.summary_table && ch.summary_table.length) {
+      html += '<h3>📋 Bảng Tóm Tắt Cú Pháp &amp; Khái Niệm Cốt Lõi:</h3>' +
+        '<div class="sunken-panel" style="overflow-x:auto; margin-bottom:14px;"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>Khái niệm / Cú pháp</th><th>Ý nghĩa cốt lõi</th><th>Ghi chú thực chiến</th></tr></thead><tbody>';
+      ch.summary_table.forEach(function(r) {
+        html += '<tr><td><code>' + escapeHtml(r[0] || "") + '</code></td><td>' + escapeHtml(r[1] || "") + '</td><td>' + escapeHtml(r[2] || "") + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+
+    if (ch.quiz && ch.quiz.length) {
+      html += '<h3>❓ Tự Kiểm Tra Nhanh Cuối Chương (Bấm vào câu hỏi để đối chiếu đáp án):</h3>';
+      ch.quiz.forEach(function(qz) {
+        html += '<details class="example-box" style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:bold;">' + escapeHtml(qz.q || "") + '</summary>' +
+          '<div style="margin-top:6px; padding-top:6px; border-top:1px dashed var(--border-dark); color:var(--ok-color);"><b>✅ Đáp án chuẩn:</b> ' + escapeHtml(qz.a || "") + '</div></details>';
+      });
+    }
+
+    var defaultNote = state.notes3Line[ch.id] || (
+      (ch.goals && ch.goals[0] ? "1. Ý tưởng: " + ch.goals[0] : "1. Ý tưởng chính: ") + "\n" +
+      (ch.summary_table && ch.summary_table[0] ? "2. Cú pháp: " + ch.summary_table[0][0] + " -> " + ch.summary_table[0][1] : "2. Cú pháp cốt lõi: ") + "\n" +
+      (ch.common_errors && ch.common_errors[0] ? "3. Bẫy cần tránh: " + ch.common_errors[0] : "3. Bẫy cần tránh: ")
+    );
+    html += '<h3>📝 Sổ Tay Ghi Chú 3 Dòng Của Chương Này:</h3>' +
+      '<div class="field-row-stacked">' +
+      '<textarea id="ch-note-input" rows="3" style="width:100%; font-family:var(--font-mono); font-size:12px; padding:6px;">' + escapeHtml(defaultNote) + '</textarea>' +
+      '<div style="margin-top:6px;"><button class="default" id="btn-save-note" data-ch="' + escapeHtml(ch.id) + '">💾 Lưu ghi chú 3 dòng của ' + escapeHtml(chCode) + '</button></div>' +
+      '</div></section>';
+
+    // Thanh điều hướng chân trang (Chương trước / Phòng Lab / Chương sau)
+    var prevChId = chIdx === 0 ? "ch00" : DATA.chapters[chIdx - 1].id;
+    var prevLabel = chIdx === 0 ? "◄ Chương 0: Nền Tảng CSDL" : ("◄ " + (DATA.chapters[chIdx - 1].code || DATA.chapters[chIdx - 1].id));
+    var nextCh = (chIdx + 1 < DATA.chapters.length) ? DATA.chapters[chIdx + 1] : null;
+
+    html += '<div class="section-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">' +
+      '<button data-nav-ch="' + escapeHtml(prevChId) + '">' + escapeHtml(prevLabel) + '</button>' +
+      '<button data-nav-view="lab">🧪 Mở Phòng Thực Hành SQL</button>' +
+      (nextCh
+        ? '<button class="default" data-nav-ch="' + escapeHtml(nextCh.id) + '">' + escapeHtml((nextCh.code || nextCh.id) + ": " + nextCh.title) + ' ►</button>'
+        : '<button class="default" data-nav-view="appendices">📑 Xem Phụ Lục Tra Cứu A - F ►</button>') +
       '</div>';
-    html += '</section>';
 
     html += '</div>';
 
     pane.innerHTML = html;
-    pane.scrollTop = 0;
+    if (scrollSecId) {
+      var targetEl = document.getElementById(scrollSecId);
+      if (targetEl) targetEl.scrollIntoView({ behavior: "smooth" });
+    } else {
+      pane.scrollTop = 0;
+    }
+  }
+
+  var ch15FilterState = { part: "ALL", cat: "ALL", q: "" };
+
+  function renderChapter15KeywordDictionary(ch) {
+    var cards = ch.keyword_cards || [];
+    var allCats = [];
+    cards.forEach(function(kc) {
+      if (kc.category && allCats.indexOf(kc.category) === -1) allCats.push(kc.category);
+    });
+    var countA = cards.filter(function(kc) { return kc.part === "A"; }).length;
+    var countB = cards.filter(function(kc) { return kc.part === "B"; }).length;
+
+    var filtered = cards.filter(function(kc) {
+      if (ch15FilterState.part !== "ALL" && kc.part !== ch15FilterState.part) return false;
+      if (ch15FilterState.cat !== "ALL" && kc.category !== ch15FilterState.cat) return false;
+      if (ch15FilterState.q && ch15FilterState.q.trim() !== "") {
+        var qLower = ch15FilterState.q.trim().toLowerCase();
+        var hay = (
+          (kc.keyword || "") + " " +
+          (kc.category || "") + " " +
+          stripHtml(kc.part1_what || kc.what_it_does || "") + " " +
+          stripHtml(kc.part2_backend || kc.backend_scenario || "") + " " +
+          (kc.part3_tsql || kc.tsql_code || "")
+        ).toLowerCase();
+        if (hay.indexOf(qLower) === -1) return false;
+      }
+      return true;
+    });
+
+    var html = '<section class="section-card" id="sec-keyword-cards">' +
+      '<h2>3B. Bách Khoa Toàn Thư Từ Khóa T-SQL (' + cards.length + ' Thẻ 4 Phần — DB FruitStore_Ultimate)</h2>' +
+      '<div class="callout-info"><b>Cấu trúc Thẻ 4 Phần chuẩn hóa:</b> (1) Giải thích ngắn gọn nó làm gì &bull; (2) Tình huống thực tế Backend Java/.NET cần dùng &bull; (3) Code mẫu T-SQL trên DB FruitStore &bull; (4) Bảng Output minh họa &amp; Nút chạy thử trong Lab.</div>' +
+      '<fieldset class="retro-groupbox" style="margin:10px 0;"><legend>🔎 Bộ Lọc Từ Điển Từ Khóa T-SQL</legend>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">' +
+          '<button class="' + (ch15FilterState.part === "ALL" ? "default" : "") + '" data-ch15-part="ALL">Tất cả (' + cards.length + ')</button>' +
+          '<button class="' + (ch15FilterState.part === "A" ? "default" : "") + '" data-ch15-part="A">⭐ Phần A: Cốt Lõi Bắt Buộc (' + countA + ')</button>' +
+          '<button class="' + (ch15FilterState.part === "B" ? "default" : "") + '" data-ch15-part="B">🚀 Phần B: Nâng Cao / Biết Thêm (' + countB + ')</button>' +
+          '<select id="ch15-cat-select" aria-label="Lọc theo nhóm từ khóa">' +
+            '<option value="ALL"' + (ch15FilterState.cat === "ALL" ? ' selected' : '') + '>-- Tất cả nhóm (' + allCats.length + ') --</option>';
+    allCats.forEach(function(cat) {
+      html += '<option value="' + escapeHtml(cat) + '"' + (ch15FilterState.cat === cat ? ' selected' : '') + '>' + escapeHtml(cat) + '</option>';
+    });
+    html += '</select>' +
+          '<input type="text" id="ch15-kw-search" placeholder="Tìm nhanh (VD: ROW_NUMBER, APPLY, MERGE, JSON...)" value="' + escapeHtml(ch15FilterState.q) + '" style="flex:1; min-width:180px;">' +
+          '<button class="default" data-nav-view="lab" data-param="fruitstore">🍉 Mở Lab FruitStore (9 Bảng)</button>' +
+        '</div>' +
+      '</fieldset>' +
+      '<div style="font-size:12px; margin-bottom:8px; color:var(--text-muted);">Đang hiển thị <b>' + filtered.length + ' / ' + cards.length + '</b> thẻ từ khóa:</div>';
+
+    filtered.forEach(function(card, idx) {
+      var isPartA = (card.part === "A");
+      var badgeHtml = isPartA
+        ? '<span class="badge-chuan">[PHẦN A - CỐT LÕI BẮT BUỘC]</span>'
+        : '<span class="badge-tsql">[PHẦN B - NÂNG CAO / BIẾT THÊM]</span>';
+      var whatText = card.part1_what || card.what_it_does || "";
+      var backendText = card.part2_backend || card.backend_scenario || "";
+      var tsqlCode = card.part3_tsql || card.tsql_code || "";
+      var outTable = card.part4_output || card.output || null;
+
+      html += '<div class="example-box" id="kw-card-' + escapeHtml(card.id || idx) + '">' +
+        '<div class="example-header">' +
+          '<span><b>#' + (idx + 1) + '. ' + escapeHtml(card.keyword) + '</b> ' + badgeHtml + ' <small style="color:var(--text-muted);">[' + escapeHtml(card.category || "") + ']</small></span>' +
+          '<div style="display:flex; gap:4px;">' +
+            '<button data-copy-text="' + encodeURIComponent(tsqlCode) + '">📋 Sao chép T-SQL</button>' +
+            (card.lab_sql ? '<button class="default" data-push-lab-sql="' + encodeURIComponent(card.lab_sql) + '" data-lab-db="fruitstore">⚡ Chạy thử trong Lab FruitStore</button>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-bottom:6px;"><b>(1) Giải thích ngắn gọn nó làm gì:</b> ' + whatText + '</div>' +
+        '<div style="margin-bottom:8px;"><b>(2) Tình huống thực tế Backend Java/.NET cần dùng:</b> ' + backendText + '</div>' +
+        '<div style="margin-bottom:4px;"><b>(3) Code mẫu T-SQL áp dụng trên DB FruitStore:</b></div>' +
+        '<pre class="code-block"><code>' + escapeHtml(tsqlCode) + '</code></pre>' +
+        (outTable ? '<div style="margin-top:8px;"><b>(4) Output minh họa dạng bảng:</b>' + renderStaticTableHtml(outTable) + '</div>' : '') +
+      '</div>';
+    });
+
+    html += '</section>';
+    return html;
+  }
+
+  /* ========================================================================
+     7. PHÒNG THỰC HÀNH SQL 2 CỘT (.lab-grid) & MÁY CHẤM TỰ ĐỘNG (TASK FIX 05)
+     ======================================================================== */
+  function normalizeVal(val) {
+    if (val === null || val === undefined) return null;
+    if (typeof val === "number") return Number(val.toFixed(4));
+    var s = String(val).trim();
+    var num = Number(s);
+    if (!isNaN(num) && s !== "" && !/^[A-Za-z_]/.test(s)) return Number(num.toFixed(4));
+    return s.toLowerCase();
+  }
+
+  function getAll77LabProblems() {
+    var list = [];
+    (DATA.chapters || []).forEach(function(ch, cIdx) {
+      var chCode = ch.code || ("Chương " + (ch.num || (cIdx + 1)));
+      (ch.basics || []).forEach(function(b, bIdx) {
+        var pid = b.id || (ch.id + "_b" + (b.num || (bIdx + 1)));
+        list.push({
+          id: pid,
+          chId: ch.id,
+          chCode: chCode,
+          title: b.title || ("Bài cơ bản " + (bIdx + 1)),
+          difficulty: "Cơ bản",
+          db: b.db || "truonghoc",
+          prompt: b.problem || b.prompt || b.summary || "",
+          h1: (b.hints && b.hints[0]) || b.intuition || "Xác định bảng nguồn và điều kiện lọc.",
+          h2: (b.hints && b.hints[1]) || b.trace || "Kiểm tra các cột cần SELECT và thứ tự ORDER BY.",
+          solSql: b.sql || b.solution_sql || "",
+          expected: b.expected || b.expected_output || null,
+          starter_sql: b.starter_sql || "",
+          required_keywords: b.required_keywords || [],
+          forbidden_keywords: b.forbidden_keywords || [],
+          order_matters: !!b.order_matters,
+          note3: {
+            idea: b.intuition || (ch.goals && ch.goals[0]) || "",
+            syntax: (b.hints && b.hints[1]) || "",
+            trap: (ch.common_errors && ch.common_errors[0]) || ""
+          }
+        });
+      });
+      (ch.practice || []).forEach(function(p, pIdx) {
+        var pid = p.id || (ch.id + "_p" + (pIdx + 1));
+        list.push({
+          id: pid,
+          chId: ch.id,
+          chCode: chCode,
+          title: p.title || ("Bài thực hành " + (pIdx + 1)),
+          difficulty: p.difficulty || "Thực hành",
+          db: p.db || "shoponline",
+          prompt: p.summary || p.prompt || p.problem || "",
+          h1: p.understand || (p.hints && p.hints[0]) || "Phân tích mối quan hệ giữa các bảng.",
+          h2: p.optimal || (p.hints && p.hints[1]) || "Viết truy vấn tối ưu và kiểm tra NULL.",
+          solSql: p.sql || p.solution_sql || "",
+          expected: p.expected || p.expected_output || null,
+          starter_sql: p.starter_sql || "",
+          required_keywords: p.required_keywords || [],
+          forbidden_keywords: p.forbidden_keywords || [],
+          order_matters: !!p.order_matters,
+          note3: p.note3 || {
+            idea: p.understand || "",
+            syntax: p.optimal || "",
+            trap: p.pitfalls || ""
+          }
+        });
+      });
+    });
+
+    (DATA.leetcode_challenges || []).forEach(function(lc) {
+      list.push({
+        id: lc.id,
+        chId: "ch14",
+        chCode: "LeetCode #" + lc.lc_num,
+        title: lc.title,
+        difficulty: lc.difficulty || "Trung bình",
+        db: lc.db || "leetcode",
+        prompt: lc.prompt || "",
+        h1: (lc.hints && lc.hints[0]) || lc.pattern || lc.hint || "",
+        h2: (lc.hints && lc.hints[1]) || "",
+        solSql: lc.solution_sql || lc.sql || "",
+        expected: lc.expected || null,
+        starter_sql: lc.starter_sql || "",
+        required_keywords: lc.required_keywords || [],
+        forbidden_keywords: lc.forbidden_keywords || [],
+        order_matters: !!lc.order_matters,
+        note3: {
+          idea: "Mẫu bài toán: " + (lc.pattern || lc.title),
+          syntax: lc.solution_sql || "",
+          trap: (lc.hints && lc.hints[0]) || ""
+        }
+      });
+    });
+
+    return list;
+  }
+
+  function gradeSqlProblem(problem, userSql) {
+    if (!sqlEngineReady || !SQL) {
+      return { pass: false, msg: "SQLite WASM chưa nạp xong. Vui lòng thử lại sau vài giây." };
+    }
+    var dbId = problem.db || state.activeDbId;
+    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
+    var dbMeta = dbs.find(function(d) { return d.id === dbId; });
+    if (!dbMeta) {
+      return { pass: false, msg: "Không tìm thấy cấu hình CSDL: " + dbId };
+    }
+
+    var cleanSql = (userSql || "").trim();
+    if (!cleanSql) {
+      return { pass: false, msg: "Bạn chưa nhập câu lệnh SQL nào!" };
+    }
+
+    // 1. Kiểm tra từ khóa bắt buộc / bị cấm (nếu có)
+    if (Array.isArray(problem.required_keywords)) {
+      for (var i = 0; i < problem.required_keywords.length; i++) {
+        var kw = problem.required_keywords[i];
+        var reg = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+        if (!reg.test(cleanSql)) {
+          return { pass: false, msg: "Câu lệnh của bạn cần sử dụng từ khóa: " + kw };
+        }
+      }
+    }
+    if (Array.isArray(problem.forbidden_keywords)) {
+      for (var j = 0; j < problem.forbidden_keywords.length; j++) {
+        var fkw = problem.forbidden_keywords[j];
+        var fReg = new RegExp(fkw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+        if (fReg.test(cleanSql)) {
+          return { pass: false, msg: "Câu lệnh vi phạm quy tắc: Không được dùng " + fkw };
+        }
+      }
+    }
+
+    // 2. Tạo bản sao CSDL sạch trong RAM để chấm điểm nhất quán (hỗ trợ cả DML INSERT/UPDATE/DELETE)
+    var tempUserDb = new SQL.Database();
+    var userRes = { columns: [], values: [] };
+    try {
+      if (dbMeta.schema_sql) tempUserDb.run(dbMeta.schema_sql);
+      if (dbMeta.seed_sql) tempUserDb.run(dbMeta.seed_sql);
+      var uExec = tempUserDb.exec(cleanSql);
+      if (uExec && uExec.length > 0) {
+        userRes = uExec[uExec.length - 1];
+      }
+    } catch (err) {
+      tempUserDb.close();
+      return { pass: false, msg: "Lỗi cú pháp SQL: " + err.message };
+    }
+    tempUserDb.close();
+
+    // 3. Lấy tập kết quả chuẩn từ problem.expected HOẶC chạy problem.solSql / problem.solution_sql
+    var solCols = [];
+    var solVals = [];
+    if (problem.expected && Array.isArray(problem.expected.cols)) {
+      solCols = problem.expected.cols;
+      solVals = problem.expected.rows || [];
+    } else {
+      var refSql = problem.solSql || problem.solution_sql || problem.sql || "";
+      if (!refSql) {
+        return { pass: false, msg: "Bài tập này chưa có câu lệnh đáp án tham chiếu." };
+      }
+      var tempSolDb = new SQL.Database();
+      try {
+        if (dbMeta.schema_sql) tempSolDb.run(dbMeta.schema_sql);
+        if (dbMeta.seed_sql) tempSolDb.run(dbMeta.seed_sql);
+        var sExec = tempSolDb.exec(refSql);
+        if (sExec && sExec.length > 0) {
+          solCols = sExec[sExec.length - 1].columns;
+          solVals = sExec[sExec.length - 1].values;
+        }
+      } catch (sErr) {
+        tempSolDb.close();
+        return { pass: false, msg: "Lỗi khi chạy đáp án chuẩn: " + sErr.message };
+      }
+      tempSolDb.close();
+    }
+
+    var userFormatted = { cols: userRes.columns || [], rows: userRes.values || [] };
+    var solFormatted = { cols: solCols, rows: solVals };
+
+    // 4. Đối chiếu số cột và số dòng
+    if (userFormatted.cols.length !== solFormatted.cols.length) {
+      return {
+        pass: false,
+        msg: "Sai số lượng cột: Câu lệnh của bạn trả về " + userFormatted.cols.length + " cột (" + userFormatted.cols.join(", ") + "), nhưng đáp án yêu cầu " + solFormatted.cols.length + " cột (" + solFormatted.cols.join(", ") + ").",
+        userTable: userFormatted,
+        expectedTable: solFormatted
+      };
+    }
+
+    if (userFormatted.rows.length !== solFormatted.rows.length) {
+      return {
+        pass: false,
+        msg: "Sai số lượng dòng: Câu lệnh của bạn trả về " + userFormatted.rows.length + " dòng, nhưng đáp án chuẩn có " + solFormatted.rows.length + " dòng.",
+        userTable: userFormatted,
+        expectedTable: solFormatted
+      };
+    }
+
+    // 5. Chuẩn hóa và đối chiếu từng ô dữ liệu
+    var uRows = userFormatted.rows.map(function(r) { return r.map(normalizeVal); });
+    var eRows = solFormatted.rows.map(function(r) { return r.map(normalizeVal); });
+
+    if (!problem.order_matters) {
+      var sortFn = function(a, b) { return JSON.stringify(a).localeCompare(JSON.stringify(b)); };
+      uRows.sort(sortFn);
+      eRows.sort(sortFn);
+    }
+
+    for (var r = 0; r < eRows.length; r++) {
+      for (var c = 0; c < eRows[r].length; c++) {
+        if (uRows[r][c] !== eRows[r][c]) {
+          return {
+            pass: false,
+            msg: "Sai lệch dữ liệu tại dòng #" + (r + 1) + " (cột '" + solFormatted.cols[c] + "'): Giá trị của bạn là '" + userFormatted.rows[r][c] + "', trong khi đáp án chuẩn là '" + solFormatted.rows[r][c] + "'." + (problem.order_matters ? " (Lưu ý: Bài này có kiểm tra thứ tự sắp xếp ORDER BY)." : ""),
+            userTable: userFormatted,
+            expectedTable: solFormatted
+          };
+        }
+      }
+    }
+
+    return {
+      pass: true,
+      msg: "CHÍNH XÁC 100%! Tập kết quả (" + solFormatted.rows.length + " dòng, " + solFormatted.cols.length + " cột) hoàn toàn khớp với đáp án chuẩn!",
+      rowCount: solFormatted.rows.length,
+      colCount: solFormatted.cols.length,
+      userTable: userFormatted,
+      expectedTable: solFormatted
+    };
+  }
+
+  function explainSqlQuery(userSql, dbId) {
+    if (!sqlEngineReady || !SQL) {
+      return { ok: false, msg: "SQLite WASM chưa nạp xong. Vui lòng thử lại sau vài giây." };
+    }
+    var cleanSql = (userSql || "").trim();
+    if (!cleanSql) {
+      return { ok: false, msg: "Vui lòng nhập câu lệnh SQL trước khi xem EXPLAIN QUERY PLAN!" };
+    }
+    var targetDbId = dbId || state.activeDbId;
+    var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
+    var dbMeta = dbs.find(function(d) { return d.id === targetDbId; });
+    if (!dbMeta) {
+      return { ok: false, msg: "Không tìm thấy CSDL: " + targetDbId };
+    }
+
+    var tempDb = new SQL.Database();
+    try {
+      if (dbMeta.schema_sql) tempDb.run(dbMeta.schema_sql);
+      if (dbMeta.seed_sql) tempDb.run(dbMeta.seed_sql);
+      var res = tempDb.exec("EXPLAIN QUERY PLAN " + cleanSql);
+      tempDb.close();
+      if (!res || res.length === 0) {
+        return { ok: false, msg: "Không tạo được kế hoạch thực thi cho câu lệnh này." };
+      }
+      var planRes = res[0];
+      var hasScan = false;
+      var hasSearch = false;
+      var hasTempBTree = false;
+
+      (planRes.values || []).forEach(function(row) {
+        var detail = String(row[row.length - 1] || "");
+        if (detail.indexOf("SCAN") !== -1) hasScan = true;
+        if (detail.indexOf("SEARCH") !== -1) hasSearch = true;
+        if (detail.indexOf("TEMP B-TREE") !== -1 || detail.indexOf("USE TEMP") !== -1) hasTempBTree = true;
+      });
+
+      return {
+        ok: true,
+        columns: planRes.columns,
+        values: planRes.values,
+        hasScan: hasScan,
+        hasSearch: hasSearch,
+        hasTempBTree: hasTempBTree
+      };
+    } catch (err) {
+      tempDb.close();
+      return { ok: false, msg: "Lỗi EXPLAIN QUERY PLAN: " + err.message };
+    }
   }
 
   function renderLabView(dbId, problemId) {
@@ -781,104 +1455,160 @@
     var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
     var currentDbMeta = dbs.find(function(d) { return d.id === currentDbId; }) || dbs[0] || {};
 
-    var html = '<div class="lab-container">';
-    html += '<div class="ch-banner">' +
-      '<div class="ch-code">SQL LAB // SQLITE WASM DETERMINISTIC RUNNER</div>' +
-      '<h1>Phòng Thực Hành SQL &amp; Máy Chấm Bài Tự Động</h1>' +
-      '<div class="ch-source">Thực thi SQL trực tiếp trong trình duyệt | 0 Dependencies | Chuẩn ANSI &amp; SQLite</div>' +
+    var allProbs = getAll77LabProblems();
+    var currentProblem = window._CURRENT_LAB_PROBLEM || (problemId ? allProbs.find(function(p){ return p.id === problemId; }) : allProbs[0]);
+    if (problemId && currentProblem && currentProblem.db) {
+      currentDbId = currentProblem.db;
+      state.activeDbId = currentDbId;
+      currentDbMeta = dbs.find(function(d) { return d.id === currentDbId; }) || dbs[0] || {};
+    }
+
+    var html = '<div class="lab-container">' +
+      '<div class="ch-banner">' +
+        '<div class="ch-code">SQL LAB // SQLITE WASM DETERMINISTIC RUNNER &amp; 77 PROBLEMS</div>' +
+        '<h1>Phòng Thực Hành SQL &amp; Máy Chấm Bài Tự Động</h1>' +
+        '<div class="ch-source">Bố cục 2 cột chuyên nghiệp | Máy chấm RAM độc lập (Hỗ trợ DML) | Kế hoạch EXPLAIN QUERY PLAN</div>' +
       '</div>';
 
-    // Toolbar chọn DB & Bài tập
-    html += '<fieldset class="retro-groupbox"><legend>🗄️ Chọn Cơ Sở Dữ Liệu &amp; Đề Bài Thực Hành</legend>' +
+    // Toolbar chọn Đề bài (77 bài) + CSDL (7 CSDL) + Reset + Schema
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:12px;"><legend>🗄️ Chọn Cơ Sở Dữ Liệu &amp; Đề Bài Thực Hành</legend>' +
       '<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">' +
-      '<div class="field-row" style="margin:0;"><label for="lab-db-select"><b>CSDL:</b></label>' +
-      '<select id="lab-db-select" style="min-width:180px;">';
+        '<div class="field-row" style="margin:0;"><label for="lab-problem-select"><b>Đề bài (77 bài):</b></label>' +
+        '<select id="lab-problem-select" style="min-width:260px; max-width:400px;">' +
+          '<option value="">-- Chọn 1 trong 77 bài tập thực hành --</option>';
+
+    var currentChapterGroup = "";
+    allProbs.forEach(function(p) {
+      if (p.chCode !== currentChapterGroup) {
+        if (currentChapterGroup !== "") html += '</optgroup>';
+        currentChapterGroup = p.chCode;
+        html += '<optgroup label="' + escapeHtml(currentChapterGroup) + '">';
+      }
+      var isDone = !!state.completedItems[p.id];
+      var isSel = (currentProblem && currentProblem.id === p.id);
+      html += '<option value="' + escapeHtml(p.id) + '"' + (isSel ? ' selected' : '') + '>' +
+        (isDone ? '✅ ' : '📝 ') + escapeHtml(p.title) + ' [' + escapeHtml(p.difficulty) + ' - DB: ' + escapeHtml(p.db) + ']' +
+        '</option>';
+    });
+    if (currentChapterGroup !== "") html += '</optgroup>';
+
+    html += '</select></div>' +
+        '<div class="field-row" style="margin:0;"><label for="lab-db-select"><b>CSDL:</b></label>' +
+        '<select id="lab-db-select" style="min-width:160px;">';
     dbs.forEach(function(d) {
       html += '<option value="' + d.id + '" ' + (d.id === currentDbId ? 'selected' : '') + '>' + (d.name || d.id) + '</option>';
     });
     html += '</select></div>' +
-      '<button id="btn-lab-reset-db">🔄 Reset CSDL này</button>' +
-      '<button id="btn-lab-view-schema">📋 Xem Sơ đồ ER &amp; Schema</button>' +
-      '</div>';
-
-    if (currentDbMeta.desc) {
-      html += '<p style="margin:6px 0 0 0; font-size:12px; color:var(--text-muted);">' + currentDbMeta.desc + '</p>';
-    }
-    html += '</fieldset>';
-
-    // Khung đề bài (nếu có chọn bài)
-    html += '<div id="lab-problem-banner" style="display:none; margin-bottom:12px;"></div>';
-
-    // Editor & Nút bấm
-    html += '<fieldset class="retro-groupbox"><legend>💻 Trình Soạn Thảo SQL (Nhấn F5 hoặc Ctrl+Enter để chạy)</legend>' +
-      '<div class="field-row-stacked">' +
-      '<textarea id="sql-editor" rows="7" style="width:100%; font-family:var(--font-mono); font-size:13px; padding:6px; background:var(--bg-panel); color:var(--text-main);" placeholder="-- Nhập câu lệnh SQL tại đây...\nSELECT * FROM SinhVien LIMIT 10;">SELECT * FROM ' + (currentDbId === "fruitstore" ? "Fruits" : (currentDbId === "truonghoc" ? "SinhVien" : "sqlite_master")) + ' LIMIT 5;</textarea>' +
+        '<button id="btn-lab-reset-db">🔄 Reset CSDL này</button>' +
+        '<button id="btn-lab-view-schema">📋 Xem Schema DDL</button>' +
       '</div>' +
-      '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
-      '<button class="default" id="btn-run-sql" style="font-weight:bold;">▶ Chạy Thử Lệnh (F5)</button>' +
-      '<button id="btn-grade-sql" style="font-weight:bold; color:var(--accent);">✅ Nộp Bài &amp; Chấm Điểm (Ctrl+S)</button>' +
-      '<button id="btn-clear-sql">Xóa khung gõ</button>' +
-      '<span id="sql-run-timer" style="margin-left:auto; font-size:11px; color:var(--text-muted);"></span>' +
+    '</fieldset>';
+
+    // BỐ CỤC 2 CỘT (.lab-grid)
+    html += '<div class="lab-grid">' +
+      '<!-- CỘT TRÁI: ĐỀ BÀI + GỢI Ý 3 TẦNG + SƠ ĐỒ ER ASCII -->' +
+      '<div class="lab-col-left">' +
+        '<div id="lab-problem-banner" class="exercise-box"></div>' +
+        '<fieldset class="retro-groupbox" style="margin-top:10px;">' +
+          '<legend>📊 Sơ Đồ Thực Thể Kết Hợp (ERD ASCII): <span id="lab-erd-title">' + escapeHtml(currentDbMeta.name || currentDbId) + '</span></legend>' +
+          '<div class="er-box" id="lab-erd-content">' + escapeHtml(currentDbMeta.er_ascii || "Chưa có sơ đồ ER ASCII.") + '</div>' +
+          '<div style="text-align:right; margin-top:4px;"><button id="btn-lab-view-schema-inline">📋 Xem chi tiết DDL &amp; Seed SQL</button></div>' +
+        '</fieldset>' +
       '</div>' +
-      '</fieldset>';
-
-    // Bảng kết quả (Sunken Panel & Interactive Table)
-    html += '<div id="sql-result-area">' +
-      '<div class="sunken-panel sql-result-sunken" id="sql-result-sunken">' +
-      '<div style="padding:12px; text-align:center; color:var(--text-muted);">Bấm <b>▶ Chạy Thử Lệnh (F5)</b> để xem bảng kết quả tại đây...</div>' +
-      '</div></div>';
-
-    html += '</div>';
+      '<!-- CỘT PHẢI: TRÌNH SOẠN THẢO SQL + 4 NÚT HÀNH ĐỘNG + BẢNG KẾT QUẢ -->' +
+      '<div class="lab-col-right">' +
+        '<fieldset class="retro-groupbox">' +
+          '<legend>💻 Trình Soạn Thảo SQL (Nhấn F5: Chạy, Ctrl+S: Chấm điểm)</legend>' +
+          '<div class="field-row-stacked">' +
+            '<textarea id="sql-editor" rows="9" style="width:100%; font-family:var(--font-mono); font-size:13px; padding:6px; background:var(--bg-panel); color:var(--text-main);" placeholder="-- Nhập câu lệnh SQL tại đây...\nSELECT * FROM SinhVien LIMIT 10;"></textarea>' +
+          '</div>' +
+          '<div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">' +
+            '<button class="default" id="btn-run-sql" style="font-weight:bold;">▶ Chạy Thử Lệnh (F5)</button>' +
+            '<button id="btn-grade-sql" style="font-weight:bold; color:var(--accent);">✅ Nộp Bài &amp; Chấm Điểm (Ctrl+S)</button>' +
+            '<button id="btn-explain-sql" style="font-weight:bold;">🔍 EXPLAIN QUERY PLAN</button>' +
+            '<button id="btn-clear-sql">Xóa</button>' +
+            '<span id="sql-run-timer" style="margin-left:auto; font-size:11px; color:var(--text-muted);"></span>' +
+          '</div>' +
+        '</fieldset>' +
+        '<div id="sql-result-area" style="margin-top:10px;">' +
+          '<div class="sunken-panel sql-result-sunken" id="sql-result-sunken">' +
+            '<div style="padding:16px; text-align:center; color:var(--text-muted);">Bấm <b>▶ Chạy Thử Lệnh (F5)</b> hoặc <b>✅ Nộp Bài &amp; Chấm Điểm (Ctrl+S)</b> để xem kết quả tại đây...</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
 
     pane.innerHTML = html;
     pane.scrollTop = 0;
 
-    // Tự động nạp đề bài nếu có problemId
-    if (problemId) {
-      loadProblemIntoLab(problemId);
+    // Nạp bài tập vào cột trái
+    if (currentProblem) {
+      loadProblemIntoLab(currentProblem.id);
     }
   }
 
   function loadProblemIntoLab(problemId) {
-    var problem = null;
+    if (!problemId) return;
+    var allProbs = getAll77LabProblems();
+    var problem = allProbs.find(function(p) { return p.id === problemId || p.id === ("#" + problemId); });
+    if (!problem) return;
 
-    // Tìm trong 12 bài LeetCode
-    (DATA.leetcode_challenges || []).forEach(function(lc) {
-      if (lc.id === problemId || ("#"+lc.lc_num) === problemId) problem = lc;
-    });
+    window._CURRENT_LAB_PROBLEM = problem;
 
-    // Tìm trong 16 chương
-    if (!problem) {
-      (DATA.chapters || []).forEach(function(ch) {
-        var allEx = (ch.basics || []).concat(ch.practice || []);
-        allEx.forEach(function(ex, idx) {
-          var pId = ex.id || (ch.id + "_ex_" + idx);
-          if (pId === problemId) {
-            problem = ex;
-            problem.id = pId;
-          }
-        });
-      });
+    // Đồng bộ CSDL nếu bài tập yêu cầu CSDL khác
+    if (problem.db && problem.db !== state.activeDbId) {
+      state.activeDbId = problem.db;
+      var dbSel = document.getElementById("lab-db-select");
+      if (dbSel) dbSel.value = problem.db;
+      var dbs = (DATA.labs && DATA.labs.databases) ? DATA.labs.databases : [];
+      var dbMeta = dbs.find(function(d) { return d.id === problem.db; });
+      if (dbMeta) {
+        var erdTitle = document.getElementById("lab-erd-title");
+        var erdContent = document.getElementById("lab-erd-content");
+        if (erdTitle) erdTitle.textContent = dbMeta.name || dbMeta.id;
+        if (erdContent) erdContent.textContent = dbMeta.er_ascii || "Chưa có sơ đồ ER ASCII.";
+      }
     }
 
-    if (!problem) return;
+    // Đồng bộ dropdown bài tập
+    var probSel = document.getElementById("lab-problem-select");
+    if (probSel && probSel.value !== problem.id) {
+      probSel.value = problem.id;
+    }
 
     var banner = document.getElementById("lab-problem-banner");
     var editor = document.getElementById("sql-editor");
-    if (!banner) return;
+    if (banner) {
+      var isDone = !!state.completedItems[problem.id];
+      var bHtml = '<div class="example-header">' +
+        '<span>' + (isDone ? '✅ ' : '🎯 ') + '<b>' + escapeHtml(problem.title) + '</b> ' +
+        '<span class="badge-chuan">[' + escapeHtml(problem.chCode) + ']</span> ' +
+        '<span class="badge-tsql">[Độ khó: ' + escapeHtml(problem.difficulty) + ']</span> ' +
+        '<small style="color:var(--text-muted);">(CSDL: ' + escapeHtml(problem.db) + ')</small></span>' +
+        '<button class="default" id="btn-copy-sol-to-editor" style="font-size:11px;">📋 Chép Lời Giải Mẫu Vào Ô Gõ</button>' +
+        '</div>' +
+        '<p style="margin:6px 0; font-size:13px;"><b>Yêu cầu đề bài:</b> ' + escapeHtml(problem.prompt) + '</p>';
 
-    banner.style.display = "block";
-    banner.innerHTML = '<fieldset class="retro-groupbox" style="border-color:var(--accent); background:var(--accent-soft);">' +
-      '<legend>🎯 Đề Bài Đang Làm: ' + (problem.title || '') + '</legend>' +
-      '<p><b>Yêu cầu:</b> ' + (problem.prompt || problem.problem || problem.summary || '') + '</p>' +
-      (problem.hints ? '<details><summary>💡 Xem gợi ý</summary><ul>' + problem.hints.map(function(h){return '<li>'+h+'</li>';}).join('') + '</ul></details>' : '') +
-      '</fieldset>';
+      if (problem.h1 || problem.h2 || problem.solSql) {
+        bHtml += '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">💡 Gợi ý tầng 1 (Ý tưởng &amp; Hướng tư duy)</summary><p style="margin:4px 0;">' + escapeHtml(problem.h1) + '</p></details></div>' +
+          '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold;">🧩 Gợi ý tầng 2 (Khung cú pháp &amp; Phân tích)</summary><p style="margin:4px 0;"><code>' + escapeHtml(problem.h2) + '</code></p></details></div>' +
+          '<div class="hint-tier"><details><summary style="cursor:pointer; font-weight:bold; color:var(--accent);">🔑 Gợi ý tầng 3 (Lời giải chuẩn &amp; Bảng đối chiếu)</summary>' +
+          '<pre class="code-block"><code>' + escapeHtml(problem.solSql) + '</code></pre>' +
+          (problem.expected ? renderStaticTableHtml(problem.expected) : '') +
+          '</details></div>';
+      }
 
-    if (editor && problem.starter_sql) {
-      editor.value = problem.starter_sql;
+      banner.innerHTML = bHtml;
     }
 
-    window._CURRENT_LAB_PROBLEM = problem;
+    if (editor) {
+      if (problem.starter_sql) {
+        editor.value = problem.starter_sql;
+      } else {
+        editor.value = "-- Đề bài: " + problem.title + " (CSDL: " + problem.db + ")\n-- Nhập câu truy vấn SQL của bạn bên dưới:\n\n";
+      }
+      editor.focus();
+    }
   }
 
   function renderResultTableHtml(columns, values, duration) {
@@ -893,14 +1623,14 @@
 
     html += '<table class="interactive sql-result-table"><thead><tr>';
     columns.forEach(function(col) {
-      html += '<th>' + col + '</th>';
+      html += '<th>' + escapeHtml(col) + '</th>';
     });
     html += '</tr></thead><tbody>';
 
     values.forEach(function(row) {
       html += '<tr>';
       row.forEach(function(cell) {
-        var display = (cell === null || cell === undefined) ? '<i style="color:var(--text-muted);">&lt;NULL&gt;</i>' : String(cell);
+        var display = (cell === null || cell === undefined) ? '<i style="color:var(--text-muted);">&lt;NULL&gt;</i>' : escapeHtml(cell);
         html += '<td>' + display + '</td>';
       });
       html += '</tr>';
@@ -911,7 +1641,7 @@
   }
 
   /* ========================================================================
-     8. RENDER 6 BỘ MÔ PHỎNG TRỰC QUAN (SIMULATORS VIEW - TASK 10)
+     8. RENDER 6 BỘ MÔ PHỎNG TRỰC QUAN (SIMULATORS VIEW - TASK FIX 06)
      ======================================================================== */
   function renderSimulatorsView(simId) {
     state.lastView = "simulators";
@@ -927,11 +1657,11 @@
     var sims = DATA.simulators || {};
     var sim = sims[currentSimId] || sims.join;
 
-    var html = '<div class="simulators-wrapper">';
-    html += '<div class="ch-banner">' +
-      '<div class="ch-code">VISUAL SIMULATORS // 98.CSS INTERACTIVE LAB</div>' +
-      '<h1>' + sim.title + '</h1>' +
-      '<div class="ch-source">' + sim.desc + '</div>' +
+    var html = '<div class="simulators-wrapper">' +
+      '<div class="ch-banner">' +
+        '<div class="ch-code">VISUAL SIMULATORS // 98.CSS INTERACTIVE LAB</div>' +
+        '<h1>' + escapeHtml(sim.title) + '</h1>' +
+        '<div class="ch-source">' + escapeHtml(sim.desc) + '</div>' +
       '</div>';
 
     // Multirows Tablist của 98.css chọn giữa 6 Simulator
@@ -978,46 +1708,98 @@
     var modeKeys = Object.keys(sim.modes);
     var activeMode = window._JOIN_MODE || "INNER";
     var mData = sim.modes[activeMode] || sim.modes.INNER;
+    var pairs = mData.matched_pairs || [];
+    var stepIdx = (window._JOIN_STEP || 0) % (pairs.length + 1); // 0 = xem tất cả, 1..N = từng bước
 
-    var html = '<fieldset class="retro-groupbox"><legend>🎛️ Chọn Chế Độ Phép Nối Bảng (JOIN Mode)</legend>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:12px;">';
+    // Xác định màu tô SVG Venn theo từng phép JOIN
+    var leftFill = (activeMode === "LEFT" || activeMode === "FULL" || activeMode === "CROSS" || activeMode === "ON_VS_WHERE" || activeMode === "LEFT_ANTI")
+      ? "rgba(10, 100, 220, 0.55)" : "rgba(150, 150, 150, 0.15)";
+    var rightFill = (activeMode === "RIGHT" || activeMode === "FULL" || activeMode === "CROSS")
+      ? "rgba(220, 110, 10, 0.55)" : "rgba(150, 150, 150, 0.15)";
+    var centerFill = (activeMode === "LEFT_ANTI") ? "rgba(150, 150, 150, 0.15)" : "rgba(16, 150, 72, 0.80)";
+
+    var html = '<fieldset class="retro-groupbox"><legend>🎛️ Chọn Phép Nối Bảng (JOIN Mode) &amp; Chạy Từng Bước</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:10px;">';
     modeKeys.forEach(function(k) {
       html += '<div class="field-row">' +
         '<input type="radio" id="radio-join-' + k + '" name="join-mode" value="' + k + '" ' + (k === activeMode ? 'checked' : '') + '>' +
-        '<label for="radio-join-' + k + '">' + k + '</label>' +
-        '</div>';
+        '<label for="radio-join-' + k + '"><b>' + k + '</b></label>' +
+      '</div>';
     });
-    html += '</div></fieldset>';
+    html += '</div>' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="default" id="btn-join-step">⏭ Bước kế tiếp (Space) [' + (stepIdx === 0 ? "Tổng quan " + pairs.length + " cặp" : "Cặp " + stepIdx + "/" + pairs.length) + ']</button>' +
+          '<button id="btn-join-reset">Xem tất cả</button>' +
+        '</div>' +
+      '</div></fieldset>';
 
-    html += '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">';
-    // Bảng trái
-    html += '<div class="sunken-panel"><div style="padding:4px; font-weight:bold; background:var(--bg-window);">' + sim.left_table.name + '</div>' +
-      '<table class="interactive"><thead><tr><th>MaSV</th><th>HoTen</th><th>MaKhoa</th></tr></thead><tbody>';
+    // Ba cột trực quan: Bảng Trái A | Biểu đồ SVG Venn ở giữa | Bảng Phải B
+    html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:12px; align-items:stretch; margin:10px 0;">';
+
+    // Cột 1: Bảng Trái
+    html += '<div class="sunken-panel" style="padding:6px;">' +
+      '<div style="font-weight:bold; padding:4px; background:var(--bg-window); margin-bottom:4px;">📘 ' + escapeHtml(sim.left_table.name) + '</div>' +
+      '<table class="interactive chm-table" style="margin:0;"><thead><tr><th>MaSV</th><th>HoTen</th><th>MaKhoa</th></tr></thead><tbody>';
     sim.left_table.rows.forEach(function(r) {
-      html += '<tr><td>' + r.MaSV + '</td><td>' + r.HoTen + '</td><td>' + (r.MaKhoa || '<i style="color:var(--err-color)">NULL</i>') + '</td></tr>';
+      html += '<tr><td><b>' + r.MaSV + '</b></td><td>' + r.HoTen + '</td><td>' + (r.MaKhoa ? '<code>' + r.MaKhoa + '</code>' : '<b style="color:var(--err-color);">NULL</b>') + '</td></tr>';
     });
     html += '</tbody></table></div>';
 
-    // Bảng phải
-    html += '<div class="sunken-panel"><div style="padding:4px; font-weight:bold; background:var(--bg-window);">' + sim.right_table.name + '</div>' +
-      '<table class="interactive"><thead><tr><th>MaKhoa</th><th>TenKhoa</th></tr></thead><tbody>';
+    // Cột 2: Biểu đồ SVG Venn Tập Hợp
+    html += '<div class="sim-visual-canvas" style="margin:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">' +
+      '<div style="font-weight:bold; color:var(--accent); margin-bottom:4px;">🎨 Biểu Đồ Tập Hợp Venn (' + escapeHtml(activeMode) + ')</div>' +
+      '<svg viewBox="0 0 280 135" style="width:240px; height:118px; display:block; margin:2px auto;">' +
+        '<defs><clipPath id="joinClipA"><circle cx="102" cy="68" r="50"/></clipPath></defs>' +
+        '<circle cx="102" cy="68" r="50" fill="' + leftFill + '" stroke="var(--text-main)" stroke-width="2"/>' +
+        '<circle cx="178" cy="68" r="50" fill="' + rightFill + '" stroke="var(--text-main)" stroke-width="2"/>' +
+        '<circle cx="178" cy="68" r="50" clip-path="url(#joinClipA)" fill="' + centerFill + '" stroke="var(--text-main)" stroke-width="1.5"/>' +
+        '<text x="58" y="64" fill="var(--text-main)" font-size="11" font-weight="bold">Bảng A</text>' +
+        '<text x="55" y="78" fill="var(--text-main)" font-size="10">(SV04 NULL)</text>' +
+        '<text x="123" y="71" fill="#ffffff" font-size="11" font-weight="bold">A ∩ B</text>' +
+        '<text x="188" y="64" fill="var(--text-main)" font-size="11" font-weight="bold">Bảng B</text>' +
+        '<text x="188" y="78" fill="var(--text-main)" font-size="10">(Khoa NN)</text>' +
+      '</svg>' +
+      '<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">' + escapeHtml(mData.label) + '</div>' +
+    '</div>';
+
+    // Cột 3: Bảng Phải
+    html += '<div class="sunken-panel" style="padding:6px;">' +
+      '<div style="font-weight:bold; padding:4px; background:var(--bg-window); margin-bottom:4px;">📙 ' + escapeHtml(sim.right_table.name) + '</div>' +
+      '<table class="interactive chm-table" style="margin:0;"><thead><tr><th>MaKhoa</th><th>TenKhoa</th></tr></thead><tbody>';
     sim.right_table.rows.forEach(function(r) {
-      html += '<tr><td>' + r.MaKhoa + '</td><td>' + r.TenKhoa + '</td></tr>';
+      html += '<tr><td><code><b>' + r.MaKhoa + '</b></code></td><td>' + r.TenKhoa + '</td></tr>';
     });
     html += '</tbody></table></div></div>';
 
-    // Chi tiết mode
-    html += '<fieldset class="retro-groupbox"><legend>🔍 ' + mData.label + '</legend>';
-    html += '<pre class="code-block"><code>' + mData.sql + '</code></pre>';
-    html += '<p><b>Cơ chế hoạt động:</b> ' + mData.desc + '</p>';
-    html += '<pre style="background:var(--bg-code); padding:6px; font-family:var(--font-mono);">' + mData.venn_ascii + '</pre>';
-    html += '</fieldset>';
+    // Hộp giải thích bước ghép hiện tại + SQL
+    html += '<fieldset class="retro-groupbox"><legend>🔍 Cơ Chế Ghép Dòng: ' + escapeHtml(mData.label) + '</legend>' +
+      '<pre class="code-block"><code>' + escapeHtml(mData.sql) + '</code></pre>' +
+      '<p style="margin:6px 0;"><b>Bản chất:</b> ' + escapeHtml(mData.desc) + '</p>';
 
-    // Kết quả
-    html += '<fieldset class="retro-groupbox"><legend>📊 Tập Kết Quả Trả Về (' + mData.result_rows.length + ' dòng)</legend>' +
-      '<div class="sunken-panel"><table class="interactive"><thead><tr><th>MaSV</th><th>HoTen</th><th>MaKhoa</th><th>TenKhoa</th><th>Giải thích</th></tr></thead><tbody>';
+    // Hiển thị các bước kiểm tra cặp khóa nối
+    var visiblePairs = stepIdx === 0 ? pairs : pairs.slice(0, stepIdx);
+    html += '<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">';
+    visiblePairs.forEach(function(p, idx) {
+      var isDiscard = p.status && p.status.indexOf("DISCARD") !== -1;
+      html += '<div style="padding:4px 8px; border:1px solid ' + (isDiscard ? 'var(--err-color)' : 'var(--ok-color)') + '; background:var(--bg-card); font-size:12px;">' +
+        '<b>Cặp #' + (idx + 1) + ':</b> ' + escapeHtml(p.left) + ' ⟷ ' + escapeHtml(p.right) + ' &rarr; ' +
+        '<b style="color:' + (isDiscard ? 'var(--err-color)' : 'var(--ok-color)') + ';">' + (isDiscard ? '❌ LOẠI BỎ' : '✅ GIỮ LẠI (' + p.status + ')') + '</b>' +
+      '</div>';
+    });
+    html += '</div></fieldset>';
+
+    // Bảng kết quả đầu ra
+    html += '<fieldset class="retro-groupbox"><legend>📊 Tập Kết Quả Đầu Ra (' + mData.result_rows.length + ' dòng)</legend>' +
+      '<div class="sunken-panel"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>MaSV</th><th>HoTen</th><th>MaKhoa</th><th>TenKhoa</th><th>Giải thích</th></tr></thead><tbody>';
     mData.result_rows.forEach(function(row) {
-      html += '<tr><td>' + (row.MaSV || '<i>NULL</i>') + '</td><td>' + (row.HoTen || '<i>NULL</i>') + '</td><td>' + (row.MaKhoa || '<i>NULL</i>') + '</td><td>' + (row.TenKhoa || '<i>NULL</i>') + '</td><td><small>' + (row.ghi_chu || '') + '</small></td></tr>';
+      html += '<tr>' +
+        '<td>' + (row.MaSV ? escapeHtml(row.MaSV) : '<i style="color:var(--err-color);">&lt;NULL&gt;</i>') + '</td>' +
+        '<td>' + (row.HoTen ? escapeHtml(row.HoTen) : '<i style="color:var(--err-color);">&lt;NULL&gt;</i>') + '</td>' +
+        '<td>' + (row.MaKhoa ? '<code>' + escapeHtml(row.MaKhoa) + '</code>' : '<i style="color:var(--err-color);">&lt;NULL&gt;</i>') + '</td>' +
+        '<td>' + (row.TenKhoa ? escapeHtml(row.TenKhoa) : '<i style="color:var(--err-color);">&lt;NULL&gt;</i>') + '</td>' +
+        '<td><small>' + escapeHtml(row.ghi_chu || "") + '</small></td>' +
+      '</tr>';
     });
     html += '</tbody></table></div></fieldset>';
 
@@ -1029,32 +1811,49 @@
     var step = sim.steps[stepIdx] || sim.steps[0];
 
     var html = '<fieldset class="retro-groupbox"><legend>📋 Câu Truy Vấn Đang Mô Phỏng</legend>' +
-      '<pre class="code-block"><code>' + sim.query + '</code></pre>' +
+      '<pre class="code-block"><code>' + escapeHtml(sim.query) + '</code></pre>' +
       '</fieldset>';
 
+    // Pipeline 9 bước trực quan
+    html += '<div style="margin: 10px 0;">' +
+      '<div style="font-weight:bold; font-size:12px; margin-bottom:4px; color:var(--accent);">🚀 PIPELINE 9 BƯỚC THỰC THI LOGIC (Bấm vào bước bất kỳ để nhảy tới Bảng ảo VT tương ứng):</div>' +
+      '<div class="pipeline-steps-bar">';
+    sim.steps.forEach(function(s, idx) {
+      var isAct = (idx === stepIdx);
+      var isDone = (idx < stepIdx);
+      var cls = isAct ? "active" : (isDone ? "done" : "");
+      html += '<button type="button" class="pipeline-step-pill ' + cls + '" data-exec-step="' + idx + '">' +
+        (isDone ? '✓ ' : '') + escapeHtml(s.clause) +
+        '</button>';
+      if (idx < sim.steps.length - 1) {
+        html += '<span style="color:var(--text-muted); font-size:11px;">&rarr;</span>';
+      }
+    });
+    html += '</div></div>';
+
     // Scrubber điều khiển bước
-    html += '<div style="display:flex; align-items:center; gap:8px; margin: 12px 0;">' +
+    html += '<div style="display:flex; align-items:center; gap:8px; margin: 10px 0;">' +
       '<button id="btn-exec-prev" ' + (stepIdx <= 0 ? 'disabled' : '') + '>⏮ Bước trước</button>' +
       '<input type="range" class="has-box-indicator" id="exec-step-slider" min="0" max="' + (sim.steps.length - 1) + '" value="' + stepIdx + '" style="flex:1;">' +
-      '<button id="btn-exec-next" ' + (stepIdx >= sim.steps.length - 1 ? 'disabled' : '') + '>Bước tiếp (Space) ▶</button>' +
+      '<button id="btn-exec-next" class="default" ' + (stepIdx >= sim.steps.length - 1 ? 'disabled' : '') + '>Bước tiếp (Space) ▶</button>' +
       '<span style="font-weight:bold; min-width:80px; text-align:right;">Bước ' + (stepIdx + 1) + ' / ' + sim.steps.length + '</span>' +
       '</div>';
 
     // Nội dung bước hiện tại
-    html += '<fieldset class="retro-groupbox" style="border-color:var(--accent);"><legend>⚡ BƯỚC ' + step.step + ': ' + step.clause + '</legend>' +
-      '<p><b>Bảng ảo sinh ra:</b> ' + step.vt_name + '</p>' +
-      '<p>' + step.desc + '</p>' +
-      '<div class="callout-info"><b>Lưu ý mấu chốt:</b> ' + step.note + '</div>' +
+    html += '<fieldset class="retro-groupbox" style="border-color:var(--accent);"><legend>⚡ BƯỚC ' + step.step + ': ' + escapeHtml(step.clause) + '</legend>' +
+      '<p style="margin:4px 0;"><b>Bảng ảo sinh ra:</b> <span class="badge-chuan">' + escapeHtml(step.vt_name) + '</span></p>' +
+      '<p style="margin:4px 0;">' + escapeHtml(step.desc) + '</p>' +
+      '<div class="callout-info"><b>Lưu ý mấu chốt:</b> ' + escapeHtml(step.note) + '</div>' +
       '</fieldset>';
 
     // Dữ liệu bảng ảo
     html += '<fieldset class="retro-groupbox"><legend>📊 Dữ Liệu Bảng Ảo Tại Bước ' + step.step + ' (' + step.rows.length + ' dòng)</legend>' +
-      '<div class="sunken-panel"><table class="interactive"><thead><tr>';
-    step.columns.forEach(function(c) { html += '<th>' + c + '</th>'; });
+      '<div class="sunken-panel"><table class="interactive chm-table" style="margin:0;"><thead><tr>';
+    step.columns.forEach(function(c) { html += '<th>' + escapeHtml(c) + '</th>'; });
     html += '</tr></thead><tbody>';
     step.rows.forEach(function(r) {
       html += '<tr>';
-      r.forEach(function(cell) { html += '<td>' + (cell === null ? '<i>NULL</i>' : cell) + '</td>'; });
+      r.forEach(function(cell) { html += '<td>' + (cell === null ? '<i style="color:var(--text-muted);">&lt;NULL&gt;</i>' : escapeHtml(cell)) + '</td>'; });
       html += '</tr>';
     });
     html += '</tbody></table></div></fieldset>';
@@ -1065,31 +1864,111 @@
   function renderBTreeSimulator(sim) {
     var scId = window._BTREE_SCENARIO || "sarg_eq";
     var sc = sim.scenarios.find(function(s) { return s.id === scId; }) || sim.scenarios[0];
+    var targetKey = Number(window._BTREE_KEY) || 480;
 
-    var html = '<fieldset class="retro-groupbox"><legend>🌳 Thông Tin Cây Chỉ Mục Bảng DonHang (1 Triệu Dòng / 8.500 Trang Đĩa)</legend>' +
-      '<p>B-Tree gồm 3 tầng: <b>Root Page #1</b> -> <b>Intermediate Pages #20..#25</b> -> <b>Leaf Pages #410..#8500</b>.</p>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+    var rootPage = sim.root_page || { page_id: "Page #1 (Root Node)", keys: ["100..399 -> #20", "400..699 -> #21", "700..999 -> #22"] };
+    var intPages = sim.intermediate_pages || [
+      { page_id: "Page #20 (Int L1)", range: [100, 399] },
+      { page_id: "Page #21 (Int L2)", range: [400, 699] },
+      { page_id: "Page #22 (Int L3)", range: [700, 999] }
+    ];
+    var leafPages = sim.leaf_pages || [
+      { page_id: "Page #410 (Leaf)", range: [100, 249], keys: [105, 140, 195, 240] },
+      { page_id: "Page #411 (Leaf)", range: [250, 399], keys: [260, 310, 355, 390] },
+      { page_id: "Page #412 (Leaf)", range: [400, 549], keys: [410, 480, 520, 545] },
+      { page_id: "Page #413 (Leaf)", range: [550, 699], keys: [560, 610, 650, 690] },
+      { page_id: "Page #414 (Leaf)", range: [700, 849], keys: [715, 750, 790, 830] },
+      { page_id: "Page #415 (Leaf)", range: [850, 999], keys: [860, 880, 920, 975] }
+    ];
+
+    var matchedInt = intPages[0];
+    intPages.forEach(function(ip) {
+      if (targetKey >= ip.range[0] && targetKey <= ip.range[1]) matchedInt = ip;
+    });
+    var matchedLeaf = leafPages[0];
+    leafPages.forEach(function(lp) {
+      if (targetKey >= lp.range[0] && targetKey <= lp.range[1]) matchedLeaf = lp;
+    });
+    var exactFound = matchedLeaf.keys.indexOf(targetKey) !== -1;
+
+    var html = '<fieldset class="retro-groupbox"><legend>🌳 Điều Khiển Dò Cây Chỉ Mục B+Tree &amp; Kiểm Tra SARGability</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed var(--border-dark);">' +
+        '<label for="inp-btree-key"><b>Nhập khóa MaDH cần dò trên cây B+Tree (100 – 999):</b></label>' +
+        '<input type="number" id="inp-btree-key" value="' + targetKey + '" min="100" max="999" style="width:90px; font-family:var(--font-mono); font-weight:bold;">' +
+        '<button class="default" id="btn-btree-seek">🔍 Dò Đường Đi Index Seek</button>' +
+        '<small style="color:var(--text-muted);">Gợi ý khóa có sẵn: <code>105, 240, 310, 480, 520, 690, 750, 880</code></small>' +
+      '</div>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px;">';
     sim.scenarios.forEach(function(s) {
       html += '<div class="field-row">' +
         '<input type="radio" id="radio-btree-' + s.id + '" name="btree-sc" value="' + s.id + '" ' + (s.id === scId ? 'checked' : '') + '>' +
-        '<label for="radio-btree-' + s.id + '">' + s.name + '</label>' +
-        '</div>';
+        '<label for="radio-btree-' + s.id + '">' + escapeHtml(s.name) + '</label>' +
+      '</div>';
     });
     html += '</div></fieldset>';
 
-    // Kịch bản chi tiết
-    html += '<fieldset class="retro-groupbox" style="border-color:' + (sc.sargable ? 'var(--ok-color)' : 'var(--err-color)') + ';">' +
-      '<legend>' + (sc.sargable ? '✅ TRUY VẤN TỐI ƯU (SARGable)' : '🚨 TRUY VẤN PHẠM BẪY (Non-SARGable)') + '</legend>' +
-      '<pre class="code-block"><code>' + sc.sql + '</code></pre>' +
-      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin: 8px 0;">' +
-      '<div class="sunken-panel" style="padding:6px;"><b>Toán tử Plan:</b><br><span style="color:var(--accent);">' + sc.plan_op + '</span></div>' +
-      '<div class="sunken-panel" style="padding:6px;"><b>Số trang I/O đọc:</b><br><b style="font-size:14px; color:' + (sc.io_pages <= 20 ? 'var(--ok-color)' : 'var(--err-color)') + ';">' + sc.io_pages + ' trang</b></div>' +
-      '<div class="sunken-panel" style="padding:6px;"><b>Thời gian ước tính:</b><br><b>' + sc.execution_time + '</b></div>' +
+    // SƠ ĐỒ CÂY B+TREE 3 TẦNG TRỰC QUAN
+    html += '<div class="sim-visual-canvas">' +
+      '<div style="text-align:center; font-weight:bold; color:var(--accent); margin-bottom:8px;">' +
+        '🌲 SƠ ĐỒ ĐƯỜNG ĐI TRÊN CÂY CHỈ MỤC B+TREE 3 TẦNG (Khóa đang dò: MaDH = ' + targetKey + ' &rarr; ' +
+        (sc.sargable ? '<span style="color:var(--ok-color);">INDEX SEEK: Chỉ đọc đúng 3 trang đĩa!</span>' : '<span style="color:var(--err-color);">NON-SARGABLE SCAN: Bị mù chỉ mục, phải quét toàn bộ các trang lá!</span>') + ')' +
       '</div>' +
-      '<p><b>Đường đi trên B-Tree:</b> <code>' + sc.tree_path + '</code></p>' +
-      '<p><b>Phân tích I/O:</b> ' + sc.io_compare + '</p>' +
-      '<div class="callout-info"><b>Lời khuyên kỹ sư:</b> ' + sc.fix_tip + '</div>' +
-      '</fieldset>';
+      '<!-- Tầng 1: Root -->' +
+      '<div class="btree-tier-root">' +
+        '<div class="btree-node-box active-seek" style="min-width:320px;">' +
+          '<div><b>TẦNG 1 (ROOT NODE): ' + escapeHtml(rootPage.page_id) + '</b></div>' +
+          '<small>' + escapeHtml(rootPage.keys.join("  |  ")) + '</small>' +
+        '</div>' +
+      '</div>' +
+      '<div style="text-align:center; font-size:14px; line-height:1; margin-bottom:6px; color:var(--accent);">↙ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↓ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ↘</div>' +
+      '<!-- Tầng 2: Intermediate -->' +
+      '<div class="btree-tier-int">';
+    intPages.forEach(function(ip) {
+      var isHit = (ip.page_id === matchedInt.page_id);
+      html += '<div class="btree-node-box ' + (isHit ? 'active-seek' : '') + '">' +
+        '<div><b>' + (isHit ? '🎯 ' : '') + 'TẦNG 2: ' + escapeHtml(ip.page_id) + '</b></div>' +
+        '<small>Phạm vi khóa: [' + ip.range[0] + ' .. ' + ip.range[1] + ']</small>' +
+      '</div>';
+    });
+    html += '</div>' +
+      '<div style="text-align:center; font-size:13px; line-height:1; margin-bottom:6px; color:var(--accent);">⬇ Dẫn hướng xuống các trang lá (Leaf Pages — Doubly Linked List ◄──►) ⬇</div>' +
+      '<!-- Tầng 3: Leaf Pages -->' +
+      '<div class="btree-tier-leaf">';
+    leafPages.forEach(function(lp) {
+      var isHit = (lp.page_id === matchedLeaf.page_id);
+      var cls = sc.sargable ? (isHit ? "active-seek" : "") : "scanned-page";
+      html += '<div class="btree-node-box ' + cls + '">' +
+        '<div><b>' + (isHit ? '✅ ' : (sc.sargable ? '' : '🔥 ')) + escapeHtml(lp.page_id) + '</b></div>' +
+        '<small>[' + lp.range[0] + '..' + lp.range[1] + ']</small><br>' +
+        '<code>' + escapeHtml(lp.keys.join(", ")) + '</code>' +
+      '</div>';
+    });
+    html += '</div>' +
+      '<div style="margin-top:8px; text-align:center; font-size:12px;">' +
+        'Kết quả dò khóa <b>' + targetKey + '</b>: Đi thẳng <code>' + escapeHtml(rootPage.page_id) + '</code> &rarr; <code>' + escapeHtml(matchedInt.page_id) + '</code> &rarr; <code>' + escapeHtml(matchedLeaf.page_id) + '</code> (' +
+        (exactFound ? '<b style="color:var(--ok-color);">Tìm thấy khóa ' + targetKey + ' ngay tại trang lá!</b>' : '<b style="color:var(--err-color);">Xác định ngay khóa ' + targetKey + ' không tồn tại sau đúng 3 lần đọc trang!</b>') + ')' +
+      '</div>' +
+    '</div>';
+
+    // Kịch bản SARGability chi tiết + Biểu đồ thanh so sánh I/O Pages
+    var ioPct = Math.min(100, Math.max(2, Math.round((sc.io_pages / 8500) * 100)));
+    html += '<fieldset class="retro-groupbox" style="border-color:' + (sc.sargable ? 'var(--ok-color)' : 'var(--err-color)') + ';">' +
+      '<legend>' + (sc.sargable ? '✅ PHÂN TÍCH KỊCH BẢN TỐI ƯU (SARGable)' : '🚨 PHÂN TÍCH KỊCH BẢN PHẠM BẪY (Non-SARGable)') + '</legend>' +
+      '<pre class="code-block"><code>' + escapeHtml(sc.sql) + '</code></pre>' +
+      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:8px; margin: 8px 0;">' +
+        '<div class="sunken-panel" style="padding:6px;"><b>Toán tử Execution Plan:</b><br><span style="color:var(--accent); font-weight:bold;">' + escapeHtml(sc.plan_op) + '</span></div>' +
+        '<div class="sunken-panel" style="padding:6px;"><b>Số trang đĩa 8KB phải đọc:</b><br><b style="font-size:14px; color:' + (sc.io_pages <= 20 ? 'var(--ok-color)' : 'var(--err-color)') + ';">' + sc.io_pages + ' / 8.500 trang</b></div>' +
+        '<div class="sunken-panel" style="padding:6px;"><b>Thời gian thực thi:</b><br><b>' + escapeHtml(sc.execution_time) + '</b></div>' +
+      '</div>' +
+      '<div style="margin:8px 0;"><b>Biểu đồ chi phí đọc đĩa (Logical Reads I/O):</b>' +
+        '<div class="sunken-panel" style="height:20px; padding:2px; background:var(--bg-panel);">' +
+          '<div style="height:100%; width:' + ioPct + '%; background:' + (sc.sargable ? 'var(--ok-color)' : 'var(--err-color)') + '; transition:width 0.25s;"></div>' +
+        '</div>' +
+      '</div>' +
+      '<p style="margin:6px 0;"><b>Đường đi thực tế:</b> <code>' + escapeHtml(sc.tree_path) + '</code></p>' +
+      '<p style="margin:6px 0;"><b>Giải thích cơ chế:</b> ' + escapeHtml(sc.io_compare) + '</p>' +
+      '<div class="callout-info"><b>💡 Cách tối ưu chuẩn Backend Engineer:</b> ' + escapeHtml(sc.fix_tip) + '</div>' +
+    '</fieldset>';
 
     return html;
   }
@@ -1098,33 +1977,76 @@
     var lKeys = Object.keys(sim.levels);
     var activeL = window._ISO_LEVEL || "READ_UNCOMMITTED";
     var lData = sim.levels[activeL] || sim.levels.READ_UNCOMMITTED;
+    var timeline = lData.timeline || [];
+    var stepIdx = (window._ISO_STEP || 0) % (timeline.length + 1); // 0 = all, 1..N = up to stepIdx
 
-    var html = '<fieldset class="retro-groupbox"><legend>🔒 Chọn Mức Cô Lập Giao Dịch Hoặc Kịch Bản</legend>' +
-      '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
+    var html = '<fieldset class="retro-groupbox"><legend>🔒 Chọn Mức Cô Lập Giao Dịch Hoặc Kịch Bản &amp; Chạy Từng Mốc</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">' +
+        '<div style="display:flex; flex-wrap:wrap; gap:8px;">';
     lKeys.forEach(function(k) {
       html += '<div class="field-row">' +
         '<input type="radio" id="radio-iso-' + k + '" name="iso-level" value="' + k + '" ' + (k === activeL ? 'checked' : '') + '>' +
-        '<label for="radio-iso-' + k + '">' + k + '</label>' +
-        '</div>';
+        '<label for="radio-iso-' + k + '"><b>' + k + '</b></label>' +
+      '</div>';
     });
-    html += '</div></fieldset>';
+    html += '</div>' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="default" id="btn-iso-step">⏭ Bước mốc tiếp theo (Space) [' + (stepIdx === 0 ? "Tất cả " + timeline.length + " mốc" : "Mốc " + stepIdx + "/" + timeline.length) + ']</button>' +
+          '<button id="btn-iso-reset">Xem toàn bộ</button>' +
+        '</div>' +
+      '</div></fieldset>';
 
-    html += '<fieldset class="retro-groupbox"><legend>' + lData.name + '</legend>' +
-      '<p><b>Hiện tượng dị thường:</b> ' + lData.anomaly + '</p>' +
-      '<p><b>Cơ chế khóa:</b> ' + lData.lock_behavior + '</p>' +
+    html += '<fieldset class="retro-groupbox"><legend>' + escapeHtml(lData.name) + '</legend>' +
+      '<p style="margin:4px 0;"><b>Hiện tượng dị thường:</b> <span style="color:var(--err-color); font-weight:bold;">' + escapeHtml(lData.anomaly) + '</span></p>' +
+      '<p style="margin:4px 0;"><b>Cơ chế khóa:</b> ' + escapeHtml(lData.lock_behavior) + '</p>' +
       '</fieldset>';
 
+    // Biểu đồ Deadlock Cycle Graph nếu đang chọn DEADLOCK_DEMO
+    if (activeL === "DEADLOCK_DEMO") {
+      html += '<div class="sim-visual-canvas" style="text-align:center;">' +
+        '<div style="font-weight:bold; color:var(--err-color); margin-bottom:6px;">⚠️ BIỂU ĐỒ CHU KỲ KHÓA CHẾT (DEADLOCK GRAPH - SQL SERVER ERROR 1205)</div>' +
+        '<svg viewBox="0 0 420 160" style="max-width:420px; height:150px; display:block; margin:0 auto;">' +
+          '<defs>' +
+            '<marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+              '<path d="M 0 0 L 10 5 L 0 10 z" fill="var(--err-color)" />' +
+            '</marker>' +
+          '</defs>' +
+          '<rect x="20" y="20" width="130" height="45" rx="4" fill="var(--bg-card)" stroke="var(--border-dark)" stroke-width="2"/>' +
+          '<text x="85" y="42" text-anchor="middle" font-weight="bold" fill="var(--text-main)" font-size="12">Transaction A</text>' +
+          '<text x="85" y="56" text-anchor="middle" fill="var(--text-muted)" font-size="10">Đang giữ Lock Bảng 1</text>' +
+          '<circle cx="210" cy="42" r="28" fill="var(--bg-panel)" stroke="var(--err-color)" stroke-width="2"/>' +
+          '<text x="210" y="40" text-anchor="middle" font-weight="bold" fill="var(--err-color)" font-size="11">Bảng 2</text>' +
+          '<text x="210" y="52" text-anchor="middle" fill="var(--text-muted)" font-size="9">Khóa bởi B</text>' +
+          '<rect x="270" y="95" width="130" height="45" rx="4" fill="var(--bg-card)" stroke="var(--border-dark)" stroke-width="2"/>' +
+          '<text x="335" y="117" text-anchor="middle" font-weight="bold" fill="var(--text-main)" font-size="12">Transaction B</text>' +
+          '<text x="335" y="131" text-anchor="middle" fill="var(--text-muted)" font-size="10">Đang giữ Lock Bảng 2</text>' +
+          '<circle cx="210" cy="117" r="28" fill="var(--bg-panel)" stroke="var(--err-color)" stroke-width="2"/>' +
+          '<text x="210" y="115" text-anchor="middle" font-weight="bold" fill="var(--err-color)" font-size="11">Bảng 1</text>' +
+          '<text x="210" y="127" text-anchor="middle" fill="var(--text-muted)" font-size="9">Khóa bởi A</text>' +
+          '<line x1="150" y1="42" x2="175" y2="42" stroke="var(--err-color)" stroke-width="2" marker-end="url(#arrow)"/>' +
+          '<line x1="270" y1="117" x2="245" y2="117" stroke="var(--err-color)" stroke-width="2" marker-end="url(#arrow)"/>' +
+          '<path d="M 210,70 L 210,85 L 300,85 L 300,95" fill="none" stroke="var(--err-color)" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrow)"/>' +
+          '<path d="M 210,90 L 210,75 L 120,75 L 120,65" fill="none" stroke="var(--err-color)" stroke-width="2" stroke-dasharray="4" marker-end="url(#arrow)"/>' +
+        '</svg>' +
+        '<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">' +
+          'Chu kỳ chờ đợi xoay vòng (Circular Wait) &rarr; SQL Server Lock Monitor can thiệp chọn 1 Transaction có chi phí Rollback thấp nhất làm Deadlock Victim!' +
+        '</div>' +
+      '</div>';
+    }
+
     // Timeline matrix
-    html += '<fieldset class="retro-groupbox"><legend>⏱️ Timeline Diễn Tiến Hai Giao Dịch</legend>' +
-      '<div class="sunken-panel"><table class="interactive"><thead><tr><th>Thời điểm</th><th>Transaction A</th><th>Transaction B</th><th>Trạng thái khóa &amp; Dữ liệu</th><th>Cảnh báo dị thường</th></tr></thead><tbody>';
-    lData.timeline.forEach(function(t) {
-      html += '<tr>' +
-        '<td><b>' + t.tick + '</b><br><small>' + t.time + '</small></td>' +
-        '<td><pre style="margin:0; font-size:11px;">' + t.tx_a + '</pre></td>' +
-        '<td><pre style="margin:0; font-size:11px;">' + t.tx_b + '</pre></td>' +
-        '<td><small><b>' + t.lock_state + '</b><br>' + t.db_val + '</small></td>' +
-        '<td>' + (t.alert ? '<span style="color:var(--err-color); font-weight:bold;">' + t.alert + '</span>' : 'Bình thường') + '</td>' +
-        '</tr>';
+    var visibleTicks = stepIdx === 0 ? timeline : timeline.slice(0, stepIdx);
+    html += '<fieldset class="retro-groupbox"><legend>⏱️ Timeline Diễn Tiến Hai Giao Dịch (' + visibleTicks.length + ' / ' + timeline.length + ' mốc)</legend>' +
+      '<div class="sunken-panel"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>Thời điểm</th><th>Transaction A</th><th>Transaction B</th><th>Trạng thái khóa &amp; Dữ liệu</th><th>Cảnh báo dị thường</th></tr></thead><tbody>';
+    visibleTicks.forEach(function(t, idx) {
+      var isLast = (stepIdx > 0 && idx === stepIdx - 1);
+      html += '<tr style="' + (isLast ? 'background:var(--accent-soft); font-weight:bold;' : '') + '">' +
+        '<td><b>' + escapeHtml(t.tick) + '</b><br><small>' + escapeHtml(t.time) + '</small></td>' +
+        '<td><pre style="margin:0; font-size:11px;">' + escapeHtml(t.tx_a) + '</pre></td>' +
+        '<td><pre style="margin:0; font-size:11px;">' + escapeHtml(t.tx_b) + '</pre></td>' +
+        '<td><small><b>' + escapeHtml(t.lock_state) + '</b><br>' + escapeHtml(t.db_val) + '</small></td>' +
+        '<td>' + (t.alert ? '<span style="color:var(--err-color); font-weight:bold;">' + escapeHtml(t.alert) + '</span>' : 'Bình thường') + '</td>' +
+      '</tr>';
     });
     html += '</tbody></table></div></fieldset>';
 
@@ -1135,32 +2057,32 @@
     var stageIdx = window._NORM_STAGE || 0;
     var stage = sim.stages[stageIdx] || sim.stages[0];
 
-    var html = '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">';
+    var html = '<div style="display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">';
     sim.stages.forEach(function(s, idx) {
-      html += '<button class="' + (idx === stageIdx ? 'default' : '') + '" data-set-norm-stage="' + idx + '" style="flex:1;">' + s.form + '</button>';
+      html += '<button class="' + (idx === stageIdx ? 'default' : '') + '" data-set-norm-stage="' + idx + '" style="flex:1; min-width:80px;">' + escapeHtml(s.form) + '</button>';
     });
     html += '</div>';
 
-    html += '<fieldset class="retro-groupbox"><legend>📐 ' + stage.title + '</legend>' +
-      '<p><b>Đặc điểm &amp; Nhược điểm:</b> ' + stage.problems + '</p>' +
-      (stage.anomalies ? '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin: 8px 0;">' +
-        '<div class="sunken-panel" style="padding:4px;"><b style="color:var(--err-color);">Dị thường Thêm:</b><br><small>' + stage.anomalies.insert + '</small></div>' +
-        '<div class="sunken-panel" style="padding:4px;"><b style="color:var(--err-color);">Dị thường Sửa:</b><br><small>' + stage.anomalies.update + '</small></div>' +
-        '<div class="sunken-panel" style="padding:4px;"><b style="color:var(--err-color);">Dị thường Xóa:</b><br><small>' + stage.anomalies.delete + '</small></div>' +
+    html += '<fieldset class="retro-groupbox"><legend>📐 ' + escapeHtml(stage.title) + '</legend>' +
+      '<p style="margin:4px 0;"><b>Đặc điểm &amp; Nhược điểm:</b> ' + escapeHtml(stage.problems) + '</p>' +
+      (stage.anomalies ? '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:6px; margin: 8px 0;">' +
+        '<div class="sunken-panel" style="padding:6px;"><b style="color:var(--err-color);">Dị thường Thêm (Insert):</b><br><small>' + escapeHtml(stage.anomalies.insert) + '</small></div>' +
+        '<div class="sunken-panel" style="padding:6px;"><b style="color:var(--err-color);">Dị thường Sửa (Update):</b><br><small>' + escapeHtml(stage.anomalies.update) + '</small></div>' +
+        '<div class="sunken-panel" style="padding:6px;"><b style="color:var(--err-color);">Dị thường Xóa (Delete):</b><br><small>' + escapeHtml(stage.anomalies.delete) + '</small></div>' +
         '</div>' : '') +
-      '<div class="callout-info"><b>Hành động chuẩn hóa:</b> ' + stage.action_taken + '</div>' +
+      '<div class="callout-info"><b>Hành động chuẩn hóa:</b> ' + escapeHtml(stage.action_taken) + '</div>' +
       '</fieldset>';
 
     // Các bảng
-    html += '<h3>Các Bảng Sau Khi Chuẩn Hóa (' + stage.tables.length + ' bảng):</h3>';
+    html += '<h3>Các Bảng Sau Khi Tách / Chuẩn Hóa (' + stage.tables.length + ' bảng):</h3>';
     stage.tables.forEach(function(t) {
-      html += '<fieldset class="retro-groupbox"><legend>Bảng: ' + t.name + ' (Khóa chính: ' + t.pk + ')</legend>' +
-        '<div class="sunken-panel"><table class="interactive"><thead><tr>';
-      t.cols.forEach(function(c) { html += '<th>' + c + '</th>'; });
+      html += '<fieldset class="retro-groupbox" style="margin-bottom:10px;"><legend>Bảng: ' + escapeHtml(t.name) + ' (Khóa chính: <code>' + escapeHtml(t.pk) + '</code>)</legend>' +
+        '<div class="sunken-panel"><table class="interactive chm-table" style="margin:0;"><thead><tr>';
+      t.cols.forEach(function(c) { html += '<th>' + escapeHtml(c) + '</th>'; });
       html += '</tr></thead><tbody>';
       t.rows.forEach(function(r) {
         html += '<tr>';
-        r.forEach(function(val) { html += '<td>' + val + '</td>'; });
+        r.forEach(function(val) { html += '<td>' + escapeHtml(val) + '</td>'; });
         html += '</tr>';
       });
       html += '</tbody></table></div></fieldset>';
@@ -1178,39 +2100,74 @@
     sim.scenarios.forEach(function(s, idx) {
       html += '<div class="field-row">' +
         '<input type="radio" id="radio-inj-' + s.id + '" name="inj-sc" value="' + idx + '" ' + (idx === scIdx ? 'checked' : '') + '>' +
-        '<label for="radio-inj-' + s.id + '">' + s.label + '</label>' +
-        '</div>';
+        '<label for="radio-inj-' + s.id + '">' + escapeHtml(s.label) + '</label>' +
+      '</div>';
     });
     html += '</div></fieldset>';
 
     html += '<fieldset class="retro-groupbox"><legend>💉 Dữ Liệu Hacker Nhập Vào Form</legend>' +
-      '<div class="field-row" style="margin-bottom:4px;"><label style="width:100px;">Username:</label><input type="text" value="' + sc.username_input + '" readonly style="flex:1; font-family:var(--font-mono); color:var(--err-color);"></div>' +
-      '<div class="field-row"><label style="width:100px;">Password:</label><input type="text" value="' + sc.password_input + '" readonly style="flex:1; font-family:var(--font-mono);"></div>' +
+      '<div class="field-row" style="margin-bottom:4px;"><label style="width:100px;">Username:</label><input type="text" value="' + escapeHtml(sc.username_input) + '" readonly style="flex:1; font-family:var(--font-mono); color:var(--err-color); font-weight:bold;"></div>' +
+      '<div class="field-row"><label style="width:100px;">Password:</label><input type="text" value="' + escapeHtml(sc.password_input) + '" readonly style="flex:1; font-family:var(--font-mono);"></div>' +
       '</fieldset>';
 
-    // So sánh trực tiếp
-    html += '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">' +
-      // Cột 1: Nối chuỗi
-      '<fieldset class="retro-groupbox" style="border-color:var(--err-color);"><legend>❌ Cách Làm Nguy Hiểm: Nối Chuỗi (Dynamic SQL)</legend>' +
-      '<pre class="code-block" style="background:#fff0f0; color:#900;"><code>' + sc.raw_concat_sql + '</code></pre>' +
-      '<p><b>Kết quả:</b> ' + sc.concat_outcome + '</p>' +
-      '</fieldset>' +
-      // Cột 2: Parameter
-      '<fieldset class="retro-groupbox" style="border-color:var(--ok-color);"><legend>🛡️ Cách Phòng Thủ Chuẩn: Parameterized Query</legend>' +
-      '<pre class="code-block" style="background:#f0fff0; color:#060;"><code>' + sc.prepared_sql + '</code></pre>' +
-      '<p><b>Kết quả:</b> ' + sc.prepared_outcome + '</p>' +
-      '</fieldset>' +
-      '</div>';
+    // So sánh trực quan AST
+    html += '<div class="sim-visual-canvas">' +
+      '<div style="font-weight:bold; color:var(--accent); margin-bottom:8px; text-align:center;">' +
+        '🌲 SO SÁNH CÂY CÚ PHÁP TRỪU TƯỢNG (ABSTRACT SYNTAX TREE - AST)' +
+      '</div>' +
+      '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px;">' +
+        '<div class="sunken-panel" style="padding:8px; text-align:center;">' +
+          '<div style="color:var(--err-color); font-weight:bold; margin-bottom:4px;">❌ AST Bị Bẻ Nhánh (Nối Chuỗi)</div>' +
+          '<svg viewBox="0 0 240 110" style="width:100%; height:95px; display:block; margin:0 auto;">' +
+            '<rect x="95" y="8" width="50" height="22" rx="3" fill="var(--warn-bg)" stroke="var(--err-color)" stroke-width="1.5"/>' +
+            '<text x="120" y="23" text-anchor="middle" font-weight="bold" fill="var(--err-color)" font-size="11">OR</text>' +
+            '<rect x="15" y="65" width="95" height="22" rx="3" fill="var(--bg-card)" stroke="var(--border-dark)"/>' +
+            '<text x="62" y="80" text-anchor="middle" font-size="9" fill="var(--text-main)">u = \'admin\'</text>' +
+            '<rect x="130" y="65" width="95" height="22" rx="3" fill="var(--warn-bg)" stroke="var(--err-color)" stroke-width="1.5"/>' +
+            '<text x="177" y="80" text-anchor="middle" font-weight="bold" font-size="9" fill="var(--err-color)">\'1\'=\'1\' (TRUE)</text>' +
+            '<line x1="110" y1="30" x2="65" y2="65" stroke="var(--border-dark)" stroke-width="1.5"/>' +
+            '<line x1="130" y1="30" x2="175" y2="65" stroke="var(--err-color)" stroke-width="2"/>' +
+          '</svg>' +
+          '<small style="color:var(--err-color);">Cấu trúc logic bị thay đổi hoàn toàn: Biểu thức luôn TRUE!</small>' +
+        '</div>' +
+        '<div class="sunken-panel" style="padding:8px; text-align:center;">' +
+          '<div style="color:var(--ok-color); font-weight:bold; margin-bottom:4px;">✅ AST Bất Biến (Parameterized Query)</div>' +
+          '<svg viewBox="0 0 240 110" style="width:100%; height:95px; display:block; margin:0 auto;">' +
+            '<rect x="95" y="8" width="50" height="22" rx="3" fill="var(--accent-soft)" stroke="var(--ok-color)" stroke-width="1.5"/>' +
+            '<text x="120" y="23" text-anchor="middle" font-weight="bold" fill="var(--ok-color)" font-size="11">AND</text>' +
+            '<rect x="15" y="65" width="95" height="22" rx="3" fill="var(--bg-card)" stroke="var(--border-dark)"/>' +
+            '<text x="62" y="80" text-anchor="middle" font-size="9" fill="var(--text-main)">u = @p0 (literal)</text>' +
+            '<rect x="130" y="65" width="95" height="22" rx="3" fill="var(--bg-card)" stroke="var(--border-dark)"/>' +
+            '<text x="177" y="80" text-anchor="middle" font-size="9" fill="var(--text-main)">p = @p1 (literal)</text>' +
+            '<line x1="110" y1="30" x2="65" y2="65" stroke="var(--ok-color)" stroke-width="1.5"/>' +
+            '<line x1="130" y1="30" x2="175" y2="65" stroke="var(--ok-color)" stroke-width="1.5"/>' +
+          '</svg>' +
+          '<small style="color:var(--ok-color);">Dữ liệu hacker chỉ là chuỗi thuần túy (@p0), không thể thực thi mã!</small>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
-    html += '<fieldset class="retro-groupbox"><legend>👨‍💻 Mã Nguồn Backend Chuẩn Mực (Java &amp; C#)</legend>' +
-      '<pre class="code-block"><code>' + sc.backend_fix_code + '</code></pre>' +
+    // So sánh trực tiếp
+    html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:12px;">' +
+      '<fieldset class="retro-groupbox" style="border-color:var(--err-color);"><legend>❌ Cách Nguy Hiểm: Nối Chuỗi (Dynamic SQL)</legend>' +
+        '<pre class="code-block" style="border-left:4px solid var(--err-color);"><code>' + escapeHtml(sc.raw_concat_sql) + '</code></pre>' +
+        '<p style="margin:4px 0;"><b>Hậu quả:</b> <span style="color:var(--err-color); font-weight:bold;">' + escapeHtml(sc.concat_outcome) + '</span></p>' +
+      '</fieldset>' +
+      '<fieldset class="retro-groupbox" style="border-color:var(--ok-color);"><legend>🛡️ Cách Phòng Thủ Chuẩn: Parameterized Query</legend>' +
+        '<pre class="code-block" style="border-left:4px solid var(--ok-color);"><code>' + escapeHtml(sc.prepared_sql) + '</code></pre>' +
+        '<p style="margin:4px 0;"><b>Kết quả:</b> <span style="color:var(--ok-color); font-weight:bold;">' + escapeHtml(sc.prepared_outcome) + '</span></p>' +
+      '</fieldset>' +
+    '</div>';
+
+    html += '<fieldset class="retro-groupbox"><legend>👨‍💻 Mã Nguồn Backend Chuẩn Mực (Java JDBC &amp; C# SqlCommand)</legend>' +
+      '<pre class="code-block"><code>' + escapeHtml(sc.backend_fix_code) + '</code></pre>' +
       '</fieldset>';
 
     return html;
   }
 
   /* ========================================================================
-     9. RENDER PHÒNG PHỎNG VẤN & LEETCODE (INTERVIEW ROOM - TASK 10)
+     9. RENDER PHÒNG PHỎNG VẤN & LEETCODE (INTERVIEW ROOM - TASK FIX 07)
      ======================================================================== */
   function renderInterviewView() {
     state.lastView = "interview";
@@ -1222,80 +2179,187 @@
 
     var bank = DATA.interview_bank || [];
     var filterLevel = window._INTERVIEW_FILTER || "ALL";
+    var boxFilter = (typeof window._INTERVIEW_BOX_FILTER === "number") ? window._INTERVIEW_BOX_FILTER : 0; // 0 = all
+    var viewMode = window._INTERVIEW_VIEW_MODE || "list"; // list | flip
 
-    // Phân loại thẻ theo hộp Leitner
+    // Thống kê 3 Hộp Leitner
     var box1 = [], box2 = [], box3 = [];
     bank.forEach(function(card) {
-      if (filterLevel !== "ALL" && card.level !== filterLevel) return;
       var b = state.leitnerBoxes[card.id] || 1;
       if (b === 2) box2.push(card);
       else if (b === 3) box3.push(card);
       else box1.push(card);
     });
 
-    var html = '<div class="interview-wrap">';
-    html += '<div class="ch-banner">' +
-      '<div class="ch-code">INTERVIEW FLASHCARDS // LEITNER 3-BOX SYSTEM</div>' +
-      '<h1>Ngân Hàng 48 Thẻ Phỏng Vấn Backend &amp; 12 Bài LeetCode SQL</h1>' +
-      '<div class="ch-source">Áp dụng thuật toán Lặp Lại Ngắt Quãng (Spaced Repetition) để ghi nhớ vĩnh viễn kiến thức CSDL</div>' +
+    // Lọc theo level & box
+    var currentCards = bank.filter(function(card) {
+      if (filterLevel !== "ALL" && card.level !== filterLevel) return false;
+      var b = state.leitnerBoxes[card.id] || 1;
+      if (boxFilter !== 0 && b !== boxFilter) return false;
+      return true;
+    });
+
+    // Đồng hồ 15 phút
+    var totalSec = (typeof window._EXAM_SECONDS === "number") ? window._EXAM_SECONDS : 900;
+    var mins = Math.floor(totalSec / 60);
+    var secs = totalSec % 60;
+    var timerStr = (mins < 10 ? "0" : "") + mins + ":" + (secs < 10 ? "0" : "") + secs;
+    var isRunning = !!window._EXAM_RUNNING;
+
+    var html = '<div class="interview-wrap">' +
+      '<div class="ch-banner">' +
+        '<div class="ch-code">INTERVIEW FLASHCARDS // LEITNER 3-BOX &amp; 15-MIN MOCK EXAM</div>' +
+        '<h1>Ngân Hàng 48 Thẻ Phỏng Vấn Backend &amp; 12 Bài LeetCode SQL</h1>' +
+        '<div class="ch-source">Lặp Lại Ngắt Quãng (Spaced Repetition) &bull; Đồng hồ thi thử 15 phút &bull; Chế độ Lật Thẻ Từng Câu</div>' +
       '</div>';
 
-    // 3 Hộp Leitner
-    html += '<div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; margin-bottom:12px;">' +
-      '<fieldset class="retro-groupbox"><legend>📦 Hộp 1: Cần Ôn Lại (' + box1.length + ' thẻ)</legend><small>Thẻ mới hoặc trả lời sai</small></fieldset>' +
-      '<fieldset class="retro-groupbox"><legend>📬 Hộp 2: Đang Nhớ (' + box2.length + ' thẻ)</legend><small>Đã trả lời đúng 1 lần</small></fieldset>' +
-      '<fieldset class="retro-groupbox"><legend>📭 Hộp 3: Đã Thuộc Lòng (' + box3.length + ' thẻ)</legend><small>Nắm chắc 100%</small></fieldset>' +
-      '</div>';
-
-    // Bộ lọc cấp độ
-    html += '<fieldset class="retro-groupbox"><legend>🎚️ Lọc Theo Cấp Độ Ứng Tuyển</legend>' +
-      '<div style="display:flex; gap:12px;">' +
-      '<div class="field-row"><input type="radio" id="rad-lvl-all" name="iv-lvl" value="ALL" ' + (filterLevel === "ALL" ? "checked" : "") + '><label for="rad-lvl-all">Tất cả (48 thẻ)</label></div>' +
-      '<div class="field-row"><input type="radio" id="rad-lvl-fresher" name="iv-lvl" value="Fresher" ' + (filterLevel === "Fresher" ? "checked" : "") + '><label for="rad-lvl-fresher">Fresher (16 thẻ)</label></div>' +
-      '<div class="field-row"><input type="radio" id="rad-lvl-junior" name="iv-lvl" value="Junior" ' + (filterLevel === "Junior" ? "checked" : "") + '><label for="rad-lvl-junior">Junior (16 thẻ)</label></div>' +
-      '<div class="field-row"><input type="radio" id="rad-lvl-mid" name="iv-lvl" value="Mid" ' + (filterLevel === "Mid" ? "checked" : "") + '><label for="rad-lvl-mid">Mid-level (16 thẻ)</label></div>' +
+    // THANH ĐIỀU KHIỂN & ĐỒNG HỒ 15:00
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:12px;"><legend>⏱️ Đồng Hồ Thi Thử Phỏng Vấn 15 Phút &amp; Chế Độ Hiển Thị</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">' +
+        '<div style="display:flex; align-items:center; gap:8px;">' +
+          '<span style="font-size:13px;"><b>Thời gian còn lại:</b></span>' +
+          '<span id="exam-timer-display" style="font-size:18px; font-weight:bold; font-family:var(--font-mono); color:' + (totalSec <= 120 ? 'var(--err-color)' : 'var(--ok-color)') + '; background:var(--bg-card); padding:2px 8px; border:1px solid var(--border-dark);">' + timerStr + '</span>' +
+          '<button class="' + (isRunning ? '' : 'default') + '" id="btn-timer-toggle">' + (isRunning ? '⏸ Tạm Dừng' : '▶ Bắt Đầu 15:00') + '</button>' +
+          '<button id="btn-timer-reset">🔄 Đặt Lại 15:00</button>' +
+        '</div>' +
+        '<div style="display:flex; gap:6px;">' +
+          '<button class="' + (viewMode === "list" ? "default" : "") + '" data-iv-mode="list">📋 Danh Sách Tất Cả (' + bank.length + ')</button>' +
+          '<button class="' + (viewMode === "flip" ? "default" : "") + '" data-iv-mode="flip">🎴 Lật Thẻ Từng Câu (Flipper)</button>' +
+        '</div>' +
       '</div></fieldset>';
 
-    // Hiển thị các thẻ Flashcard
-    var currentCards = box1.concat(box2).concat(box3);
-    html += '<h2>Danh Sách Thẻ Phỏng Vấn (' + currentCards.length + ' thẻ)</h2>';
-    html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:10px; margin-bottom:24px;">';
+    // 3 HỘP LEITNER CÓ NÚT LỌC
+    html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:8px; margin-bottom:12px;">' +
+      '<div class="window" style="cursor:pointer;" data-iv-box-filter="1">' +
+        '<div class="title-bar" style="background:' + (boxFilter === 1 ? 'var(--err-color)' : '') + ';"><div class="title-bar-text">📦 Hộp 1: Cần Ôn Lại (' + box1.length + ' thẻ)</div></div>' +
+        '<div class="window-body" style="padding:6px;"><small>' + (boxFilter === 1 ? '<b>[ĐANG LỌC]</b> ' : '') + 'Thẻ mới hoặc cần khắc sâu kiến thức</small></div>' +
+      '</div>' +
+      '<div class="window" style="cursor:pointer;" data-iv-box-filter="2">' +
+        '<div class="title-bar" style="background:' + (boxFilter === 2 ? 'var(--accent)' : '') + ';"><div class="title-bar-text">📬 Hộp 2: Đang Nhớ (' + box2.length + ' thẻ)</div></div>' +
+        '<div class="window-body" style="padding:6px;"><small>' + (boxFilter === 2 ? '<b>[ĐANG LỌC]</b> ' : '') + 'Đã trả lời đúng 1 lần, cần củng cố</small></div>' +
+      '</div>' +
+      '<div class="window" style="cursor:pointer;" data-iv-box-filter="3">' +
+        '<div class="title-bar" style="background:' + (boxFilter === 3 ? 'var(--ok-color)' : '') + ';"><div class="title-bar-text">📭 Hộp 3: Đã Thuộc Lòng (' + box3.length + ' thẻ)</div></div>' +
+        '<div class="window-body" style="padding:6px;"><small>' + (boxFilter === 3 ? '<b>[ĐANG LỌC]</b> ' : '') + 'Nắm chắc 100%, sẵn sàng ăn điểm</small></div>' +
+      '</div>' +
+    '</div>';
 
-    currentCards.forEach(function(card) {
-      var currentBox = state.leitnerBoxes[card.id] || 1;
-      html += '<div class="window" style="display:flex; flex-direction:column;">' +
-        '<div class="title-bar">' +
-        '<div class="title-bar-text">#' + card.id + ' [' + card.level + '] ' + card.topic + '</div>' +
-        '</div>' +
-        '<div class="window-body" style="flex:1; display:flex; flex-direction:column; padding:8px;">' +
-        '<p style="font-weight:bold; flex:1;">' + card.q + '</p>' +
-        '<details style="margin-bottom:8px;"><summary><b>Xem câu trả lời chuẩn &amp; câu hỏi xoáy</b></summary>' +
-        '<p style="margin-top:6px;">' + card.a + '</p>' +
-        '<p style="color:var(--accent);"><b>Câu hỏi xoáy:</b> ' + card.followup + '</p>' +
-        '</details>' +
-        '<div style="display:flex; gap:4px; align-items:center; border-top:1px solid var(--border-light); padding-top:6px;">' +
-        '<span style="font-size:11px;">Hộp: <b>' + currentBox + '</b></span>' +
-        '<button data-move-leitner="' + card.id + '" data-target-box="1" ' + (currentBox === 1 ? 'disabled' : '') + ' style="font-size:10px; margin-left:auto;">Về Hộp 1</button>' +
-        '<button data-move-leitner="' + card.id + '" data-target-box="2" ' + (currentBox === 2 ? 'disabled' : '') + ' style="font-size:10px;">Lên Hộp 2</button>' +
-        '<button data-move-leitner="' + card.id + '" data-target-box="3" ' + (currentBox === 3 ? 'disabled' : '') + ' style="font-size:10px;">Thuộc Hộp 3</button>' +
-        '</div></div></div>';
+    // BỘ LỌC CẤP ĐỘ
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:14px;"><legend>🎚️ Lọc Theo Cấp Độ Tuyển Dụng &amp; Trạng Thái Hộp</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">' +
+        '<div class="field-row"><input type="radio" id="rad-lvl-all" name="iv-lvl" value="ALL" ' + (filterLevel === "ALL" ? "checked" : "") + '><label for="rad-lvl-all">Tất cả cấp độ</label></div>' +
+        '<div class="field-row"><input type="radio" id="rad-lvl-fresher" name="iv-lvl" value="Fresher" ' + (filterLevel === "Fresher" ? "checked" : "") + '><label for="rad-lvl-fresher">Fresher</label></div>' +
+        '<div class="field-row"><input type="radio" id="rad-lvl-junior" name="iv-lvl" value="Junior" ' + (filterLevel === "Junior" ? "checked" : "") + '><label for="rad-lvl-junior">Junior</label></div>' +
+        '<div class="field-row"><input type="radio" id="rad-lvl-mid" name="iv-lvl" value="Mid" ' + (filterLevel === "Mid" ? "checked" : "") + '><label for="rad-lvl-mid">Mid-level</label></div>' +
+        (boxFilter !== 0 ? '<button data-iv-box-filter="0" style="margin-left:auto;">❌ Bỏ lọc Hộp ' + boxFilter + ' (Xem cả 3 Hộp)</button>' : '') +
+      '</div></fieldset>';
+
+    // NỘI DUNG CHÍNH: CHẾ ĐỘ FLIPPER HOẶC DANH SÁCH
+    if (viewMode === "flip") {
+      var flipIdx = (window._FLIP_INDEX || 0);
+      if (flipIdx >= currentCards.length) flipIdx = 0;
+      var activeCard = currentCards[flipIdx];
+
+      html += '<div style="max-width:680px; margin: 0 auto 24px auto;">';
+      if (!activeCard) {
+        html += '<div class="callout-info">Không có thẻ nào phù hợp với bộ lọc hiện tại.</div>';
+      } else {
+        var cardBox = state.leitnerBoxes[activeCard.id] || 1;
+        html += '<div class="window" id="flashcard-flipper-window">' +
+          '<div class="title-bar">' +
+            '<div class="title-bar-text">Thẻ #' + activeCard.id + ' [' + activeCard.level + '] — Chủ đề: ' + escapeHtml(activeCard.topic) + '</div>' +
+          '</div>' +
+          '<div class="window-body" style="padding:14px;">' +
+            '<div class="example-box" id="flashcard-flipper-card" data-flip-card="1" style="min-height:160px; cursor:pointer; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:20px; transition:all 0.2s ease;">' +
+              '<div id="flip-front">' +
+                '<span class="badge-tsql">[' + escapeHtml(activeCard.level) + ']</span>' +
+                '<h2 style="margin:10px 0; border:none; color:var(--text-main); font-size:16px;">' + escapeHtml(activeCard.q) + '</h2>' +
+                '<small style="color:var(--accent);">👆 Bấm vào khung để lật xem đáp án chuẩn ↷</small>' +
+              '</div>' +
+              '<div id="flip-back" style="display:none; text-align:left;">' +
+                '<div style="color:var(--ok-color); font-weight:bold; margin-bottom:6px;">✅ Trả lời cốt lõi (15 giây đầu):</div>' +
+                '<p style="margin:0 0 10px 0; font-size:13px;">' + escapeHtml(activeCard.a) + '</p>' +
+                '<div style="color:var(--accent); font-weight:bold; margin-bottom:4px;">🔥 Câu hỏi xoáy từ Nhà tuyển dụng:</div>' +
+                '<p style="margin:0 0 10px 0; font-size:12px; font-style:italic;">' + escapeHtml(activeCard.followup || "Nêu ví dụ thực tế trong dự án bạn đã từng làm?") + '</p>' +
+                '<small style="color:var(--text-muted); display:block; text-align:center;">👆 Bấm vào khung để quay lại câu hỏi ↶</small>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; flex-wrap:wrap; gap:8px;">' +
+              '<button id="btn-flip-prev" ' + (flipIdx <= 0 ? 'disabled' : '') + '>◄ Câu trước</button>' +
+              '<span><b>Câu ' + (flipIdx + 1) + ' / ' + currentCards.length + '</b> (Đang ở Hộp: <b>' + cardBox + '</b>)</span>' +
+              '<button id="btn-flip-next" class="default" ' + (flipIdx >= currentCards.length - 1 ? 'disabled' : '') + '>Câu tiếp ►</button>' +
+            '</div>' +
+            '<div style="display:flex; gap:6px; justify-content:center; margin-top:10px; border-top:1px dashed var(--border-dark); padding-top:10px;">' +
+              '<button data-move-leitner="' + activeCard.id + '" data-target-box="1" ' + (cardBox === 1 ? 'disabled' : '') + '>📦 Về Hộp 1: Cần ôn lại</button>' +
+              '<button data-move-leitner="' + activeCard.id + '" data-target-box="2" ' + (cardBox === 2 ? 'disabled' : '') + '>📬 Lên Hộp 2: Đang nhớ</button>' +
+              '<button data-move-leitner="' + activeCard.id + '" data-target-box="3" ' + (cardBox === 3 ? 'disabled' : '') + '>📭 Thuộc Hộp 3: Đã thuộc lòng</button>' +
+            '</div>' +
+          '</div></div>';
+      }
+      html += '</div>';
+    } else {
+      // Chế độ Danh sách đầy đủ
+      html += '<h2>Danh Sách Thẻ Phỏng Vấn Đang Hiển Thị (' + currentCards.length + ' thẻ)</h2>';
+      html += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:10px; margin-bottom:24px;">';
+      currentCards.forEach(function(card) {
+        var currentBox = state.leitnerBoxes[card.id] || 1;
+        html += '<div class="window" style="display:flex; flex-direction:column;">' +
+          '<div class="title-bar">' +
+            '<div class="title-bar-text">#' + card.id + ' [' + card.level + '] ' + escapeHtml(card.topic) + '</div>' +
+          '</div>' +
+          '<div class="window-body" style="flex:1; display:flex; flex-direction:column; padding:8px;">' +
+            '<p style="font-weight:bold; flex:1; margin:4px 0 8px 0;">' + escapeHtml(card.q) + '</p>' +
+            '<details style="margin-bottom:8px;"><summary style="cursor:pointer; font-weight:bold; color:var(--accent);">Xem câu trả lời chuẩn &amp; câu hỏi xoáy...</summary>' +
+              '<p style="margin-top:6px; font-size:12px;">' + escapeHtml(card.a) + '</p>' +
+              '<p style="color:var(--accent); font-size:12px; margin:4px 0 0 0;"><b>Câu hỏi xoáy:</b> ' + escapeHtml(card.followup) + '</p>' +
+            '</details>' +
+            '<div style="display:flex; gap:4px; align-items:center; border-top:1px solid var(--border-light); padding-top:6px;">' +
+              '<span style="font-size:11px;">Hộp: <b>' + currentBox + '</b></span>' +
+              '<button data-move-leitner="' + card.id + '" data-target-box="1" ' + (currentBox === 1 ? 'disabled' : '') + ' style="font-size:10px; margin-left:auto;">Về Hộp 1</button>' +
+              '<button data-move-leitner="' + card.id + '" data-target-box="2" ' + (currentBox === 2 ? 'disabled' : '') + ' style="font-size:10px;">Lên Hộp 2</button>' +
+              '<button data-move-leitner="' + card.id + '" data-target-box="3" ' + (currentBox === 3 ? 'disabled' : '') + ' style="font-size:10px;">Thuộc Hộp 3</button>' +
+            '</div>' +
+          '</div></div>';
+      });
+      html += '</div>';
+    }
+
+    // THỐNG KÊ CHỦ ĐỀ CÒN YẾU (Dựa trên số thẻ ở Hộp 1)
+    var topicMap = {};
+    bank.forEach(function(c) {
+      var t = c.topic || "Khác";
+      if (!topicMap[t]) topicMap[t] = { total: 0, box1: 0 };
+      topicMap[t].total++;
+      if ((state.leitnerBoxes[c.id] || 1) === 1) {
+        topicMap[t].box1++;
+      }
     });
-    html += '</div>';
 
-    // Bảng 12 thử thách LeetCode SQL
-    html += '<h2>12 Thử Thách LeetCode SQL Kinh Điển (#175 - #197)</h2>';
-    html += '<div class="sunken-panel"><table class="interactive chm-table"><thead><tr><th>Bài #</th><th>Tiêu đề bài toán</th><th>Độ khó</th><th>Mẫu kỹ thuật (Pattern)</th><th>Hành động</th></tr></thead><tbody>';
+    html += '<h2>📊 Thống Kê Chủ Đề Cần Bổ Túc Gấp (Dựa trên Hộp 1: Cần Ôn Lại)</h2>' +
+      '<div class="sunken-panel" style="margin-bottom:24px;"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>Chủ đề phỏng vấn</th><th>Tổng số thẻ</th><th>Số thẻ còn ở Hộp 1</th><th>Đánh giá mức độ</th></tr></thead><tbody>';
+    Object.keys(topicMap).forEach(function(topKey) {
+      var inf = topicMap[topKey];
+      var statusTag = (inf.box1 >= 3)
+        ? '<b style="color:var(--err-color);">🚨 Cần ôn gấp</b>'
+        : (inf.box1 >= 1 ? '<span style="color:var(--warn-text);">⚠️ Cần củng cố</span>' : '<span style="color:var(--ok-color);">✅ Đã vững vàng</span>');
+      html += '<tr><td><b>' + escapeHtml(topKey) + '</b></td><td>' + inf.total + '</td><td><b style="color:' + (inf.box1 > 0 ? 'var(--err-color)' : 'var(--ok-color)') + ';">' + inf.box1 + '</b></td><td>' + statusTag + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    // BẢNG 12 THỬ THÁCH LEETCODE SQL KINH ĐIỂN
+    html += '<h2>12 Thử Thách LeetCode SQL Kinh Điển (#175 - #197)</h2>' +
+      '<div class="sunken-panel"><table class="interactive chm-table" style="margin:0;"><thead><tr><th>Bài #</th><th>Tiêu đề bài toán</th><th>Độ khó</th><th>Mẫu kỹ thuật (Pattern)</th><th>Hành động</th></tr></thead><tbody>';
 
     (DATA.leetcode_challenges || []).forEach(function(lc) {
       var isDone = !!state.completedItems[lc.id];
       html += '<tr>' +
         '<td><b>#' + lc.lc_num + '</b></td>' +
-        '<td><b>' + lc.title + '</b></td>' +
-        '<td><span class="badge-' + (lc.difficulty === 'Dễ' ? 'chuan' : 'tsql') + '">' + lc.difficulty + '</span></td>' +
-        '<td><code>' + lc.pattern + '</code></td>' +
+        '<td><b>' + escapeHtml(lc.title) + '</b></td>' +
+        '<td><span class="badge-' + (lc.difficulty === 'Dễ' ? 'chuan' : 'tsql') + '">' + escapeHtml(lc.difficulty) + '</span></td>' +
+        '<td><code>' + escapeHtml(lc.pattern || "") + '</code></td>' +
         '<td>' + (isDone ? '<span style="color:var(--ok-color); font-weight:bold; margin-right:6px;">✓ ĐÃ XONG</span>' : '') +
-        '<button class="default" data-open-lab-problem="' + lc.id + '" data-db="leetcode">🧪 Làm bài trong Lab</button></td>' +
-        '</tr>';
+        '<button class="default" data-open-lab-problem="' + escapeHtml(lc.id) + '" data-db="leetcode">🧪 Làm bài trong Lab</button></td>' +
+      '</tr>';
     });
 
     html += '</tbody></table></div></div>';
@@ -1305,7 +2369,7 @@
   }
 
   /* ========================================================================
-     10. RENDER SỔ TAY 3 DÒNG & TRACKS & APPENDICES (TASK 10)
+     10. RENDER SỔ TAY 3 DÒNG TỔNG HỢP 77 MỤC (TASK FIX 07)
      ======================================================================== */
   function renderNotesView() {
     state.lastView = "notes";
@@ -1315,33 +2379,84 @@
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
 
-    var html = '<div class="notes-container">';
-    html += '<div class="ch-banner">' +
-      '<div class="ch-code">3-LINE NOTE RULE // PROGRESS MANAGEMENT</div>' +
-      '<h1>Sổ Tay Ghi Chú 3 Dòng &amp; Sao Lưu Tiến Độ Cá Nhân</h1>' +
-      '<div class="ch-source">Quy tắc 3 dòng: Bắt buộc cô đọng kiến thức sâu sắc nhất, không lan man</div>' +
+    var allProbs = getAll77LabProblems();
+    var filterCh = window._NOTE_FILTER_CH || "ALL";
+    var filterDiff = window._NOTE_FILTER_DIFF || "ALL";
+    var filterDone = window._NOTE_FILTER_DONE || "ALL";
+
+    var filteredNotes = allProbs.filter(function(item) {
+      if (filterCh !== "ALL" && item.chId !== filterCh) return false;
+      if (filterDiff !== "ALL" && item.difficulty !== filterDiff) return false;
+      var isDone = !!state.completedItems[item.id];
+      if (filterDone === "DONE" && !isDone) return false;
+      if (filterDone === "UNDONE" && isDone) return false;
+      return true;
+    });
+
+    var html = '<div class="notes-container">' +
+      '<div class="ch-banner">' +
+        '<div class="ch-code">3-LINE NOTE RULE // 77 LAB PROBLEMS &amp; CHAPTER SUMMARY</div>' +
+        '<h1>Sổ Tay Ghi Chú 3 Dòng &amp; Sao Lưu Tiến Độ Cá Nhân</h1>' +
+        '<div class="ch-source">Quy tắc 3 dòng: 1. Ý tưởng cốt lõi &bull; 2. Cú pháp &amp; Kỹ thuật &bull; 3. Cạm bẫy thực chiến</div>' +
       '</div>';
 
-    // Công cụ sao lưu
-    html += '<fieldset class="retro-groupbox"><legend>💾 Xuất / Nhập Dữ Liệu Học Tập</legend>' +
-      '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
-      '<button id="btn-export-markdown" class="default">📥 Xuất Sổ Tay Ra File Markdown (.md)</button>' +
-      '<button id="btn-export-json">💾 Sao Lưu Tiến Độ Ra File JSON (.json)</button>' +
-      '<button id="btn-import-json">📂 Nhập Lại Tiến Độ Từ File JSON</button>' +
-      '<input type="file" id="file-import-input" accept=".json" style="display:none;">' +
-      '<button id="btn-reset-all" style="color:var(--err-color); margin-left:auto;">⚠️ Xóa toàn bộ tiến độ</button>' +
+    // CÔNG CỤ SAO LƯU & XUẤT NHẬP
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:12px;"><legend>💾 Xuất / Nhập Dữ Liệu Học Tập &amp; Tiến Độ</legend>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">' +
+        '<button id="btn-export-markdown" class="default">📥 Xuất Sổ Tay Ra File Markdown (.md)</button>' +
+        '<button id="btn-export-json">💾 Sao Lưu Tiến Độ Ra File JSON (.json)</button>' +
+        '<button id="btn-import-json">📂 Nhập Lại Tiến Độ Từ File JSON</button>' +
+        '<input type="file" id="file-import-input" accept=".json" style="display:none;">' +
+        '<button id="btn-reset-all" style="color:var(--err-color); margin-left:auto;">⚠️ Xóa toàn bộ tiến độ</button>' +
       '</div></fieldset>';
 
-    // Danh sách ghi chú theo chương
-    html += '<h2>Ghi Chú Đã Lưu Theo Từng Chương:</h2>';
-    var chs = DATA.chapters || [];
-    chs.forEach(function(c) {
-      var note = state.notes3Line[c.id] || "";
-      html += '<fieldset class="retro-groupbox"><legend>' + (c.code || c.id) + ': ' + c.title + '</legend>' +
+    // BỘ LỌC SỔ TAY
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:14px;"><legend>🔎 Bộ Lọc Sổ Tay 3 Dòng (' + filteredNotes.length + ' / ' + allProbs.length + ' mục)</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">' +
+        '<div class="field-row" style="margin:0;"><label for="note-filter-ch"><b>Chương:</b></label>' +
+        '<select id="note-filter-ch">' +
+          '<option value="ALL"' + (filterCh === "ALL" ? ' selected' : '') + '>-- Tất cả chương (15) --</option>';
+    (DATA.chapters || []).forEach(function(c) {
+      html += '<option value="' + c.id + '"' + (filterCh === c.id ? ' selected' : '') + '>' + (c.code || c.id) + ': ' + escapeHtml(c.title) + '</option>';
+    });
+    html += '<option value="ch14"' + (filterCh === "ch14" ? ' selected' : '') + '>LeetCode SQL (#175..#197)</option>' +
+        '</select></div>' +
+        '<div class="field-row" style="margin:0;"><label for="note-filter-diff"><b>Độ khó:</b></label>' +
+        '<select id="note-filter-diff">' +
+          '<option value="ALL"' + (filterDiff === "ALL" ? ' selected' : '') + '>-- Tất cả độ khó --</option>' +
+          '<option value="Cơ bản"' + (filterDiff === "Cơ bản" ? ' selected' : '') + '>Cơ bản</option>' +
+          '<option value="Thực hành"' + (filterDiff === "Thực hành" ? ' selected' : '') + '>Thực hành</option>' +
+          '<option value="Trung bình"' + (filterDiff === "Trung bình" ? ' selected' : '') + '>LeetCode Trung bình</option>' +
+          '<option value="Khó"' + (filterDiff === "Khó" ? ' selected' : '') + '>LeetCode Khó</option>' +
+        '</select></div>' +
+        '<div class="field-row" style="margin:0;"><label for="note-filter-done"><b>Trạng thái:</b></label>' +
+        '<select id="note-filter-done">' +
+          '<option value="ALL"' + (filterDone === "ALL" ? ' selected' : '') + '>-- Tất cả trạng thái --</option>' +
+          '<option value="DONE"' + (filterDone === "DONE" ? ' selected' : '') + '>✅ Đã hoàn thành</option>' +
+          '<option value="UNDONE"' + (filterDone === "UNDONE" ? ' selected' : '') + '>📝 Chưa hoàn thành</option>' +
+        '</select></div>' +
+      '</div></fieldset>';
+
+    // DANH SÁCH 77 MỤC GHI CHÚ
+    filteredNotes.forEach(function(item) {
+      var isDone = !!state.completedItems[item.id];
+      var userNote = state.notes3Line[item.id] || (
+        "1. Ý tưởng: " + (item.note3 ? item.note3.idea : "") + "\n" +
+        "2. Cú pháp: " + (item.note3 ? item.note3.syntax : "") + "\n" +
+        "3. Bẫy: " + (item.note3 ? item.note3.trap : "")
+      );
+
+      html += '<fieldset class="retro-groupbox" style="margin-bottom:12px;">' +
+        '<legend>' + (isDone ? '✅ ' : '📝 ') + '<b>[' + escapeHtml(item.chCode) + '] ' + escapeHtml(item.title) + '</b> <small style="color:var(--text-muted);">(CSDL: ' + escapeHtml(item.db) + ')</small></legend>' +
+        '<div style="font-size:12px; margin-bottom:6px; color:var(--text-muted);"><b>Đề bài:</b> ' + escapeHtml(item.prompt) + '</div>' +
         '<div class="field-row-stacked">' +
-        '<textarea id="note-text-' + c.id + '" rows="3" style="width:100%; font-family:var(--font-mono); font-size:12px;">' + note + '</textarea>' +
-        '<div style="margin-top:4px;"><button data-save-ch-note="' + c.id + '">Lưu ghi chú chương này</button></div>' +
-        '</div></fieldset>';
+          '<textarea id="note-text-' + escapeHtml(item.id) + '" rows="3" style="width:100%; font-family:var(--font-mono); font-size:12px; padding:6px; background:var(--bg-panel); color:var(--text-main);">' + escapeHtml(userNote) + '</textarea>' +
+          '<div style="margin-top:4px; display:flex; justify-content:space-between; align-items:center;">' +
+            '<button class="default" data-save-ch-note="' + escapeHtml(item.id) + '">💾 Lưu ghi chú này</button>' +
+            '<button data-open-lab-problem="' + escapeHtml(item.id) + '" data-db="' + escapeHtml(item.db) + '">🧪 Mở Trong Phòng Lab ►</button>' +
+          '</div>' +
+        '</div>' +
+      '</fieldset>';
     });
 
     html += '</div>';
@@ -1497,12 +2612,19 @@
         goHistory(1);
       }
       // Space: Tiến bước trong Simulator
+      // Space: Tiến bước trong Simulator (Hỗ trợ JOIN, Exec Order, Isolation)
       if (e.key === " " && state.lastView === "simulators") {
         if (document.activeElement && (document.activeElement.tagName === "INPUT" || document.activeElement.tagName === "TEXTAREA")) return;
-        var btnNext = document.getElementById("btn-exec-next");
-        if (btnNext && !btnNext.disabled) {
-          e.preventDefault();
-          btnNext.click();
+        e.preventDefault();
+        if (state.activeSimulatorId === "join") {
+          var btnJoin = document.getElementById("btn-join-step");
+          if (btnJoin) btnJoin.click();
+        } else if (state.activeSimulatorId === "exec_order") {
+          var btnExec = document.getElementById("btn-exec-next");
+          if (btnExec && !btnExec.disabled) btnExec.click();
+        } else if (state.activeSimulatorId === "isolation") {
+          var btnIso = document.getElementById("btn-iso-step");
+          if (btnIso) btnIso.click();
         }
       }
       // Esc: Đóng Modal
@@ -1604,6 +2726,54 @@
         return;
       }
 
+      // Chép lời giải mẫu vào editor trong Lab
+      if (target.id === "btn-copy-sol-to-editor") {
+        if (window._CURRENT_LAB_PROBLEM && window._CURRENT_LAB_PROBLEM.solSql) {
+          var ed = document.getElementById("sql-editor");
+          if (ed) {
+            ed.value = window._CURRENT_LAB_PROBLEM.solSql;
+            showToast("Đã chép lời giải mẫu vào ô gõ SQL.");
+            ed.focus();
+          }
+        }
+        return;
+      }
+
+      // Sao chép đoạn text (data-copy-text)
+      var copyBtn = target.closest("[data-copy-text]");
+      if (copyBtn) {
+        var copyVal = decodeURIComponent(copyBtn.getAttribute("data-copy-text") || "");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(copyVal).then(function() {
+            showToast("Đã sao chép vào bộ nhớ tạm (Clipboard)!");
+          }).catch(function() {
+            prompt("Sao chép nội dung bên dưới (Ctrl+C):", copyVal);
+          });
+        } else {
+          prompt("Sao chép nội dung bên dưới (Ctrl+C):", copyVal);
+        }
+        return;
+      }
+
+      // Bộ lọc Chương 15: Phần A / B
+      var ch15PartBtn = target.closest("[data-ch15-part]");
+      if (ch15PartBtn) {
+        ch15FilterState.part = ch15PartBtn.getAttribute("data-ch15-part");
+        renderChapterView(state.lastChapterId, "sec-keyword-cards");
+        return;
+      }
+
+      // Toggle hoàn thành chương / bài tập
+      var toggleDoneChk = target.closest("[data-toggle-done]");
+      if (toggleDoneChk) {
+        var itemKey = toggleDoneChk.getAttribute("data-toggle-done");
+        state.completedItems[itemKey] = toggleDoneChk.checked;
+        saveState();
+        updateOverallProgress();
+        showToast(toggleDoneChk.checked ? "Đã đánh dấu hoàn thành!" : "Đã bỏ đánh dấu.");
+        return;
+      }
+
       // Chuyển thẻ Leitner
       var leitnerBtn = target.closest("[data-move-leitner]");
       if (leitnerBtn) {
@@ -1613,6 +2783,97 @@
         saveState();
         showToast("Đã chuyển thẻ #" + cardId + " sang Hộp " + targetBox);
         renderInterviewView();
+        return;
+      }
+
+      // Lọc theo Hộp Leitner trong Interview
+      var ivBoxBtn = target.closest("[data-iv-box-filter]");
+      if (ivBoxBtn) {
+        window._INTERVIEW_BOX_FILTER = parseInt(ivBoxBtn.getAttribute("data-iv-box-filter"), 10);
+        renderInterviewView();
+        return;
+      }
+
+      // Đổi chế độ hiển thị Interview (List vs Flipper)
+      var ivModeBtn = target.closest("[data-iv-mode]");
+      if (ivModeBtn) {
+        window._INTERVIEW_VIEW_MODE = ivModeBtn.getAttribute("data-iv-mode");
+        renderInterviewView();
+        return;
+      }
+
+      // Đồng hồ đếm ngược Interview
+      if (target.id === "btn-timer-toggle") {
+        toggleExamTimer();
+        return;
+      }
+      if (target.id === "btn-timer-reset") {
+        resetExamTimer();
+        return;
+      }
+
+      // Flipper lật thẻ & điều hướng câu
+      var flipBox = target.closest("[data-flip-card]");
+      if (flipBox && !target.closest("button")) {
+        var fFront = document.getElementById("flip-front");
+        var fBack = document.getElementById("flip-back");
+        if (fFront && fBack) {
+          var isFrontVisible = (fFront.style.display !== "none");
+          fFront.style.display = isFrontVisible ? "none" : "block";
+          fBack.style.display = isFrontVisible ? "block" : "none";
+        }
+        return;
+      }
+      if (target.id === "btn-flip-prev") {
+        window._FLIP_INDEX = Math.max(0, (window._FLIP_INDEX || 0) - 1);
+        renderInterviewView();
+        return;
+      }
+      if (target.id === "btn-flip-next") {
+        window._FLIP_INDEX = (window._FLIP_INDEX || 0) + 1;
+        renderInterviewView();
+        return;
+      }
+
+      // Dò B-Tree Index Seek
+      if (target.id === "btn-btree-seek") {
+        var inpK = document.getElementById("inp-btree-key");
+        if (inpK) {
+          window._BTREE_KEY = parseInt(inpK.value, 10) || 480;
+          renderSimulatorsView("btree");
+        }
+        return;
+      }
+
+      // Bước JOIN
+      if (target.id === "btn-join-step") {
+        window._JOIN_STEP = (window._JOIN_STEP || 0) + 1;
+        renderSimulatorsView("join");
+        return;
+      }
+      if (target.id === "btn-join-reset") {
+        window._JOIN_STEP = 0;
+        renderSimulatorsView("join");
+        return;
+      }
+
+      // Bước Isolation
+      if (target.id === "btn-iso-step") {
+        window._ISO_STEP = (window._ISO_STEP || 0) + 1;
+        renderSimulatorsView("isolation");
+        return;
+      }
+      if (target.id === "btn-iso-reset") {
+        window._ISO_STEP = 0;
+        renderSimulatorsView("isolation");
+        return;
+      }
+
+      // Pipeline Bước Exec Order
+      var pStepBtn = target.closest("[data-exec-step]");
+      if (pStepBtn) {
+        window._EXEC_STEP = parseInt(pStepBtn.getAttribute("data-exec-step"), 10);
+        renderSimulatorsView("exec_order");
         return;
       }
 
@@ -1678,6 +2939,7 @@
       }
       if (target.id === "btn-nav-forward") {
         goHistory(1);
+        return;
       }
       if (target.id === "btn-nav-refresh") {
         navigateTo(state.lastView, (state.lastView === "chapter" ? state.lastChapterId : (state.lastView === "simulators" ? state.activeSimulatorId : state.activeDbId)), true);
@@ -1710,16 +2972,20 @@
         gradeLabSql();
         return;
       }
+      if (target.id === "btn-explain-sql") {
+        explainLabSql();
+        return;
+      }
       if (target.id === "btn-clear-sql") {
-        var ed = document.getElementById("sql-editor");
-        if (ed) ed.value = "";
+        var edClean = document.getElementById("sql-editor");
+        if (edClean) edClean.value = "";
         return;
       }
       if (target.id === "btn-lab-reset-db") {
         resetDatabase(state.activeDbId);
         return;
       }
-      if (target.id === "btn-lab-view-schema") {
+      if (target.id === "btn-lab-view-schema" || target.id === "btn-lab-view-schema-inline") {
         showDbSchemaModal(state.activeDbId);
         return;
       }
@@ -1800,6 +3066,19 @@
       applyCrtScanlines(state.crtScanlines);
       chkCrt.onchange = function() {
         applyCrtScanlines(chkCrt.checked);
+      };
+    }
+
+    // Đổi chế độ Backend trên Toolbar (both, java, csharp)
+    var langSelect = document.getElementById("lang-mode-select");
+    if (langSelect) {
+      langSelect.value = state.langMode || "both";
+      langSelect.onchange = function() {
+        state.langMode = langSelect.value;
+        saveState();
+        if (state.lastView === "chapter") {
+          renderChapterView(state.lastChapterId);
+        }
       };
     }
 
@@ -1899,13 +3178,19 @@
       };
     }
 
-    // Bắt sự kiện Radio trong Simulators & Interview
+    // Bắt sự kiện Radio & Select trong Simulators, Interview & Lab
     document.addEventListener("change", function(e) {
       // Đổi CSDL trong Lab
       if (e.target.id === "lab-db-select") {
         state.activeDbId = e.target.value;
         saveState();
         renderLabView(state.activeDbId);
+        return;
+      }
+
+      // Đổi đề bài trong Lab (77 bài)
+      if (e.target.id === "lab-problem-select") {
+        loadProblemIntoLab(e.target.value);
         return;
       }
 
@@ -1950,7 +3235,87 @@
         renderSimulatorsView("exec_order");
         return;
       }
+
+      // Bộ lọc trong Sổ tay 3 dòng
+      if (e.target.id === "note-filter-ch") {
+        window._NOTE_FILTER_CH = e.target.value;
+        renderNotesView();
+        return;
+      }
+      if (e.target.id === "note-filter-diff") {
+        window._NOTE_FILTER_DIFF = e.target.value;
+        renderNotesView();
+        return;
+      }
+      if (e.target.id === "note-filter-done") {
+        window._NOTE_FILTER_DONE = e.target.value;
+        renderNotesView();
+        return;
+      }
+
+      // Bộ lọc nhóm từ khóa trong Chương 15
+      if (e.target.id === "ch15-cat-select") {
+        ch15FilterState.cat = e.target.value;
+        renderChapterView(state.lastChapterId, "sec-keyword-cards");
+        return;
+      }
     });
+
+    // Tìm kiếm tức thời trong Chương 15
+    document.addEventListener("input", function(e) {
+      if (e.target.id === "ch15-kw-search") {
+        ch15FilterState.q = e.target.value;
+        var cardsSec = document.getElementById("sec-keyword-cards");
+        if (cardsSec) {
+          var chIdx = (DATA.chapters || []).findIndex(function(c) { return c.id === "ch15"; });
+          if (chIdx !== -1) {
+            cardsSec.outerHTML = renderChapter15KeywordDictionary(DATA.chapters[chIdx]);
+            var inp = document.getElementById("ch15-kw-search");
+            if (inp) {
+              inp.focus();
+              inp.setSelectionRange(inp.value.length, inp.value.length);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function toggleExamTimer() {
+    if (window._EXAM_RUNNING) {
+      clearInterval(window._EXAM_TIMER_INTERVAL);
+      window._EXAM_RUNNING = false;
+    } else {
+      if (typeof window._EXAM_SECONDS !== "number" || window._EXAM_SECONDS <= 0) {
+        window._EXAM_SECONDS = 900;
+      }
+      window._EXAM_RUNNING = true;
+      window._EXAM_TIMER_INTERVAL = setInterval(function() {
+        if (window._EXAM_SECONDS > 0) {
+          window._EXAM_SECONDS--;
+          var el = document.getElementById("exam-timer-display");
+          if (el) {
+            var m = Math.floor(window._EXAM_SECONDS / 60);
+            var s = window._EXAM_SECONDS % 60;
+            el.textContent = (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+            el.style.color = (window._EXAM_SECONDS <= 120 ? "var(--err-color)" : "var(--ok-color)");
+          }
+        } else {
+          clearInterval(window._EXAM_TIMER_INTERVAL);
+          window._EXAM_RUNNING = false;
+          showToast("⏰ HẾT GIỜ LÀM BÀI PHỎNG VẤN 15 PHÚT! Hãy đối chiếu lại các câu chưa thuộc.", true);
+          renderInterviewView();
+        }
+      }, 1000);
+    }
+    renderInterviewView();
+  }
+
+  function resetExamTimer() {
+    if (window._EXAM_TIMER_INTERVAL) clearInterval(window._EXAM_TIMER_INTERVAL);
+    window._EXAM_RUNNING = false;
+    window._EXAM_SECONDS = 900;
+    renderInterviewView();
   }
 
   /* ========================================================================
@@ -1993,7 +3358,7 @@
     var problem = window._CURRENT_LAB_PROBLEM;
 
     if (!problem) {
-      showToast("Hiện tại chưa có đề bài nào được nạp vào máy chấm. Hãy chọn một bài tập từ Mục Lục hoặc LeetCode!", true);
+      showToast("Hiện tại chưa chọn đề bài nào. Hãy chọn 1 bài từ dropdown 77 bài tập phía trên!", true);
       return;
     }
 
@@ -2003,22 +3368,80 @@
       state.completedItems[problem.id] = true;
       saveState();
       updateOverallProgress();
-      showToast("🎉 CHÚC MỪNG! Bài tập '" + (problem.title || problem.id) + "' đã đạt chuẩn!");
+      showToast("🎉 CHÍNH XÁC 100%! Bài tập '" + problem.title + "' đã đạt chuẩn!");
 
-      resSunken.innerHTML = '<div class="window" style="margin:8px; border-color:var(--ok-color);">' +
-        '<div class="title-bar" style="background:var(--ok-color);"><div class="title-bar-text">✅ KẾT QUẢ CHẤM ĐIỂM: ĐẠT (PASS 100%)</div></div>' +
-        '<div class="window-body" style="padding:10px;">' +
-        '<p style="color:var(--ok-color); font-weight:bold; font-size:14px;">' + grade.msg + '</p>' +
-        '<p>Số dòng: <b>' + grade.rowCount + '</b> | Số cột: <b>' + grade.colCount + '</b></p>' +
-        '</div></div>';
+      var passHtml = '<div class="grade-pass">' +
+        '<div>✅ XUẤT SẮC! BÀI TẬP ĐÃ ĐẠT CHUẨN 100%</div>' +
+        '<div style="font-weight:normal; font-size:12px; margin-top:4px;">' + escapeHtml(grade.msg) + '</div>' +
+        '</div>';
+
+      if (grade.userTable) {
+        passHtml += '<div style="margin:8px 0; font-size:12px; font-weight:bold;">📊 Bảng kết quả câu lệnh của bạn (' + grade.rowCount + ' dòng, ' + grade.colCount + ' cột):</div>' +
+          renderStaticTableHtml(grade.userTable);
+      }
+
+      resSunken.innerHTML = passHtml;
     } else {
-      resSunken.innerHTML = '<div class="window" style="margin:8px; border-color:var(--err-color);">' +
-        '<div class="title-bar" style="background:var(--err-color);"><div class="title-bar-text">❌ KẾT QUẢ CHẤM ĐIỂM: CHƯA ĐẠT (FAIL)</div></div>' +
-        '<div class="window-body" style="padding:10px;">' +
-        '<p style="color:var(--err-color); font-weight:bold; font-size:13px;">' + grade.msg + '</p>' +
-        '<p><i>Gợi ý:</i> Kiểm tra lại số lượng cột, thứ tự sắp xếp hoặc điều kiện lọc trong mệnh đề WHERE.</p>' +
-        '</div></div>';
+      var failHtml = '<div class="grade-fail">' +
+        '<div>❌ CHƯA ĐẠT YÊU CẦU</div>' +
+        '<div style="font-weight:normal; font-size:12px; margin-top:4px;">' + escapeHtml(grade.msg) + '</div>' +
+        '</div>';
+
+      if (grade.userTable && grade.expectedTable) {
+        failHtml += '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:10px; margin-top:8px;">' +
+          '<div><div style="font-size:12px; font-weight:bold; color:var(--err-color); margin-bottom:4px;">❌ Kết quả câu lệnh của bạn (' + (grade.userTable.rows ? grade.userTable.rows.length : 0) + ' dòng):</div>' +
+          renderStaticTableHtml(grade.userTable) + '</div>' +
+          '<div><div style="font-size:12px; font-weight:bold; color:var(--ok-color); margin-bottom:4px;">✅ Kết quả đáp án mẫu (' + (grade.expectedTable.rows ? grade.expectedTable.rows.length : 0) + ' dòng):</div>' +
+          renderStaticTableHtml(grade.expectedTable) + '</div>' +
+          '</div>';
+      }
+
+      resSunken.innerHTML = failHtml;
     }
+  }
+
+  function explainLabSql() {
+    var editor = document.getElementById("sql-editor");
+    var resSunken = document.getElementById("sql-result-sunken");
+    var timer = document.getElementById("sql-run-timer");
+    if (!editor || !resSunken) return;
+
+    var sql = editor.value.trim();
+    if (!sql) {
+      showToast("Vui lòng nhập câu lệnh SQL cần phân tích!", true);
+      return;
+    }
+
+    var t0 = Date.now();
+    var plan = explainSqlQuery(sql, state.activeDbId);
+    var dur = Date.now() - t0;
+    if (timer) timer.textContent = "⏱️ EXPLAIN: " + dur + " ms";
+
+    if (!plan.ok) {
+      resSunken.innerHTML = '<div style="padding:10px; color:var(--err-color); font-weight:bold;">❌ ' + escapeHtml(plan.msg) + '</div>';
+      return;
+    }
+
+    var html = '<div style="padding:8px;">' +
+      '<div style="font-weight:bold; color:var(--accent); font-size:13px; margin-bottom:6px;">🔍 KẾ HOẠCH THỰC THI (EXPLAIN QUERY PLAN) — CSDL ' + escapeHtml(state.activeDbId) + ':</div>' +
+      renderResultTableHtml(plan.columns, plan.values, dur);
+
+    html += '<fieldset class="retro-groupbox" style="margin-top:10px;"><legend>🧠 Nhận Xét Hiệu Năng Của Chuyên Gia Backend</legend>';
+    if (plan.hasScan) {
+      html += '<div style="color:var(--err-color); margin-bottom:4px;"><b>⚠️ CẢNH BÁO TABLE SCAN:</b> Phát hiện phép quét toàn bộ bảng tuần tự (Full Table Scan). Khi bảng có hàng triệu dòng, phép toán này sẽ gây thắt cổ chai I/O đĩa. Hãy tạo INDEX trên các cột trong điều kiện WHERE hoặc ON.</div>';
+    }
+    if (plan.hasSearch) {
+      html += '<div style="color:var(--ok-color); margin-bottom:4px;"><b>⚡ TỐI ƯU INDEX SEEK (SEARCH USING INDEX):</b> Truy vấn tận dụng tốt chỉ mục B-Tree để tìm kiếm nhị phân trực tiếp, độ phức tạp O(log N).</div>';
+    }
+    if (plan.hasTempBTree) {
+      html += '<div style="color:var(--accent); margin-bottom:4px;"><b>💡 SỬ DỤNG TEMP B-TREE:</b> Động cơ cơ sở dữ liệu phải tạo một cây B-Tree tạm thời trong bộ nhớ RAM để thực hiện ORDER BY / GROUP BY.</div>';
+    }
+    if (!plan.hasScan && !plan.hasSearch && !plan.hasTempBTree) {
+      html += '<div style="color:var(--ok-color);">Truy vấn đơn giản, thực thi trực tiếp trên bảng.</div>';
+    }
+    html += '</fieldset></div>';
+
+    resSunken.innerHTML = html;
   }
 
   function save3LineNote(chapterId, text) {
@@ -2195,6 +3618,22 @@
       navigateTo(state.lastView || "toc", (state.lastView === "chapter" ? state.lastChapterId : (state.lastView === "simulators" ? state.activeSimulatorId : state.activeDbId)));
     });
   }
+
+  // Xuất API công khai phục vụ kiểm thử và tương tác nâng cao
+  global.BiKipApp = {
+    getState: function() { return state; },
+    getAll77LabProblems: getAll77LabProblems,
+    gradeSqlProblem: gradeSqlProblem,
+    explainSqlQuery: explainSqlQuery,
+    navigateTo: navigateTo,
+    renderChapterView: renderChapterView,
+    renderLabView: renderLabView,
+    renderSimulatorsView: renderSimulatorsView,
+    renderInterviewView: renderInterviewView,
+    renderNotesView: renderNotesView,
+    renderTocView: renderTocView,
+    renderLeftTocTree: renderLeftTocTree
+  };
 
   // Chờ DOM sẵn sàng
   if (document.readyState === "loading") {

@@ -45,6 +45,7 @@
       modes: {
         INNER: {
           label: "INNER JOIN (Nối Trong)",
+          venn_type: "inner",
           sql: "SELECT sv.MaSV, sv.HoTen, sv.MaKhoa, k.TenKhoa\nFROM SinhVien sv\nINNER JOIN Khoa k ON sv.MaKhoa = k.MaKhoa;",
           venn_ascii: "  [ Bảng Trái A ]        [ Bảng Phải B ]\n       (      (  A ∩ B  )      )\n   SV04| SV01,SV02,SV03 | Khoa NN\n(Bị loại)  (Chỉ lấy dòng khớp)  (Bị loại)",
           desc: "Chỉ giữ lại các dòng có giá trị khóa nối khớp ở cả 2 bảng (A.MaKhoa = B.MaKhoa). Dòng SV04 (MaKhoa NULL) và Khoa NN (chưa có SV) bị loại bỏ hoàn toàn.",
@@ -63,6 +64,7 @@
         },
         LEFT: {
           label: "LEFT JOIN / LEFT OUTER JOIN (Nối Trái Bảo Toàn)",
+          venn_type: "left_all",
           sql: "SELECT sv.MaSV, sv.HoTen, sv.MaKhoa, k.TenKhoa\nFROM SinhVien sv\nLEFT JOIN Khoa k ON sv.MaKhoa = k.MaKhoa;",
           venn_ascii: "  [ Bảng Trái A ]        [ Bảng Phải B ]\n   (★★★★★★★★★★★★★★★★★★★★)      )\n   (  Toàn bộ SV01..SV04 )  Khoa NN\n   (  SV04 ghép NULL     ) (Bị loại)",
           desc: "Bảo toàn 100% dòng của Bảng Trái (SinhVien). Với dòng không tìm thấy Khoa tương ứng (SV04 có MaKhoa IS NULL), các cột của Bảng Phải sẽ tự động điền giá trị NULL.",
@@ -82,6 +84,7 @@
         },
         RIGHT: {
           label: "RIGHT JOIN / RIGHT OUTER JOIN (Nối Phải Bảo Toàn)",
+          venn_type: "right_all",
           sql: "SELECT sv.MaSV, sv.HoTen, k.MaKhoa, k.TenKhoa\nFROM SinhVien sv\nRIGHT JOIN Khoa k ON sv.MaKhoa = k.MaKhoa;",
           venn_ascii: "  [ Bảng Trái A ]        [ Bảng Phải B ]\n   (      (★★★★★★★★★★★★★★★★★★★★)\n   SV04   (  Toàn bộ Khoa CNTT, KT, NN )\n(Bị loại) (  NN ghép MaSV NULL         )",
           desc: "Bảo toàn 100% dòng của Bảng Phải (Khoa). Khoa NN chưa có sinh viên nào theo học vẫn xuất hiện trong kết quả với các cột MaSV, HoTen mang giá trị NULL.",
@@ -101,6 +104,7 @@
         },
         FULL: {
           label: "FULL JOIN / FULL OUTER JOIN (Nối Toàn Phần)",
+          venn_type: "both_all",
           sql: "SELECT sv.MaSV, sv.HoTen, COALESCE(sv.MaKhoa, k.MaKhoa) AS MaKhoa, k.TenKhoa\nFROM SinhVien sv\nFULL OUTER JOIN Khoa k ON sv.MaKhoa = k.MaKhoa;",
           venn_ascii: "  [ Bảng Trái A ]        [ Bảng Phải B ]\n   (★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★)\n   (  SV04 (NULL) | Khớp 3 dòng | Khoa NN(NULL)  )\n   (         Bảo toàn CẢ HAI BẢNG                 )",
           desc: "Bảo toàn dữ liệu của cả 2 bảng. Dòng nào khớp thì ghép đủ; dòng nào bên trái không có bên phải (SV04) hoặc bên phải không có bên trái (Khoa NN) đều được giữ lại và bù giá trị NULL.",
@@ -121,6 +125,7 @@
         },
         CROSS: {
           label: "CROSS JOIN (Tích Đề-các / Cartesian Product)",
+          venn_type: "cartesian",
           sql: "SELECT sv.MaSV, sv.HoTen, k.MaKhoa, k.TenKhoa\nFROM SinhVien sv\nCROSS JOIN Khoa k;",
           venn_ascii: "  4 Dòng (SinhVien)  x  3 Dòng (Khoa)  =  12 Dòng Kết Quả\n  [Mọi sinh viên đều được ghép đôi lần lượt với tất cả các khoa]",
           desc: "Không dùng điều kiện ON. Sinh ra tích Descartes: mỗi dòng của bảng trái ghép với toàn bộ các dòng của bảng phải (4 x 3 = 12 dòng). Rất nguy hiểm trên bảng lớn nhưng hữu ích khi tạo bảng lịch/ma trận số liệu.",
@@ -147,6 +152,7 @@
         },
         ON_VS_WHERE: {
           label: "BẪY PHỎNG VẤN KINH ĐIỂN: LỌC Ở MỆNH ĐỀ ON VS WHERE TRONG LEFT JOIN",
+          venn_type: "left_vs_inner",
           sql: "-- TRƯỜNG HỢP 1: Điều kiện lọc đặt ở ON (Giữ 4 dòng)\nSELECT sv.MaSV, sv.HoTen, k.TenKhoa\nFROM SinhVien sv\nLEFT JOIN Khoa k ON sv.MaKhoa = k.MaKhoa AND k.MaKhoa = 'CNTT';\n\n-- TRƯỜNG HỢP 2: Điều kiện lọc đặt ở WHERE (Rơi mất dòng bảo toàn! Còn 2 dòng)\nSELECT sv.MaSV, sv.HoTen, k.TenKhoa\nFROM SinhVien sv\nLEFT JOIN Khoa k ON sv.MaKhoa = k.MaKhoa\nWHERE k.MaKhoa = 'CNTT';",
           venn_ascii: "  [ ĐẶT TẠI ON ]                               [ ĐẶT TẠI WHERE ]\n  Bước 1: Ghép dòng với Khoa CNTT              Bước 1: LEFT JOIN tạo bảng ảo VT2 (4 dòng)\n  Bước 2: BẢO TOÀN bảng trái (SV02, SV04)      Bước 2: WHERE k.MaKhoa='CNTT' lọc bỏ dòng\n  ==> TRẢ VỀ ĐỦ 4 DÒNG                         ==> CHỈ CÒN 2 DÒNG (Biến thành INNER JOIN!)",
           desc: "ĐÂY LÀ CÂU HỎI LOẠI 70% ỨNG VIÊN: Trong OUTER JOIN, mệnh đề ON chỉ quyết định CÓ GHÉP ĐƯỢC BẢNG PHẢI HAY KHÔNG. Sau đó bước bảo toàn bảng trái vẫn diễn ra nên toàn bộ dòng của SinhVien vẫn xuất hiện. Ngược lại, mệnh đề WHERE chạy SAU KHI ĐÃ GHÉP BẢNG, điều kiện `WHERE k.MaKhoa = 'CNTT'` sẽ loại bỏ các dòng có `k.MaKhoa IS NULL`, vô tình biến LEFT JOIN thành INNER JOIN!",
@@ -161,6 +167,22 @@
             { MaSV: "SV02", HoTen: "Trần Thị Bình", TenKhoa: null, ghi_chu: "ON giữ lại (TenKhoa NULL) -- WHERE LOẠI MẤT DÒNG NÀY!" },
             { MaSV: "SV03", HoTen: "Lê Văn Cường", TenKhoa: "Công Nghệ Thông Tin", ghi_chu: "Cả ON và WHERE đều có" },
             { MaSV: "SV04", HoTen: "Phạm Minh Dũng", TenKhoa: null, ghi_chu: "ON giữ lại (TenKhoa NULL) -- WHERE LOẠI MẤT DÒNG NÀY!" }
+          ]
+        },
+        LEFT_ANTI: {
+          label: "LEFT ANTI JOIN (Lấy dòng Bảng Trái KHÔNG có ở Bảng Phải)",
+          venn_type: "left_only",
+          sql: "SELECT sv.MaSV, sv.HoTen, sv.MaKhoa\nFROM SinhVien sv\nLEFT JOIN Khoa k ON sv.MaKhoa = k.MaKhoa\nWHERE k.MaKhoa IS NULL;",
+          venn_ascii: "  [ Bảng Trái A ]        [ Bảng Phải B ]\n   (★★★★               )      )\n   ( Chỉ lấy SV04      )   Khoa\n   ( không có khoa     )  (Bị loại)",
+          desc: "Phép nối loại trừ (Anti Join): Giữ lại các dòng của bảng trái mà KHÔNG tìm thấy bất kỳ dòng tương ứng nào ở bảng phải. Rất hữu ích để tìm 'Khách hàng chưa từng đặt đơn', 'Sinh viên chưa đăng ký môn'.",
+          matched_pairs: [
+            { left: "SV01 (CNTT)", right: "CNTT", status: "DISCARD_MATCH" },
+            { left: "SV02 (KT)", right: "KT", status: "DISCARD_MATCH" },
+            { left: "SV03 (CNTT)", right: "CNTT", status: "DISCARD_MATCH" },
+            { left: "SV04 (NULL)", right: "NULL", status: "PRESERVE_ANTI" }
+          ],
+          result_rows: [
+            { MaSV: "SV04", HoTen: "Phạm Minh Dũng", MaKhoa: null, TenKhoa: null, ghi_chu: "Sinh viên chưa có khoa (Anti Join)" }
           ]
         }
       }
@@ -305,6 +327,23 @@
         index_clustered: "PK_DonHang (MaDH - INT)",
         index_nonclustered: "IX_DonHang_NgayDat_MaKH (NgayDat, MaKH)"
       },
+      root_page: {
+        page_id: "Page #1 (Root Node)",
+        keys: ["100..399 -> Page #20", "400..699 -> Page #21", "700..999 -> Page #22"]
+      },
+      intermediate_pages: [
+        { page_id: "Page #20 (Int L1)", range: [100, 399], children: ["Page #410", "Page #411"] },
+        { page_id: "Page #21 (Int L2)", range: [400, 699], children: ["Page #412", "Page #413"] },
+        { page_id: "Page #22 (Int L3)", range: [700, 999], children: ["Page #414", "Page #415"] }
+      ],
+      leaf_pages: [
+        { page_id: "Page #410 (Leaf)", range: [100, 249], keys: [105, 140, 195, 240] },
+        { page_id: "Page #411 (Leaf)", range: [250, 399], keys: [260, 310, 355, 390] },
+        { page_id: "Page #412 (Leaf)", range: [400, 549], keys: [410, 480, 520, 545] },
+        { page_id: "Page #413 (Leaf)", range: [550, 699], keys: [560, 610, 650, 690] },
+        { page_id: "Page #414 (Leaf)", range: [700, 849], keys: [715, 750, 790, 830] },
+        { page_id: "Page #415 (Leaf)", range: [850, 999], keys: [860, 880, 920, 975] }
+      ],
       scenarios: [
         {
           id: "sarg_eq",

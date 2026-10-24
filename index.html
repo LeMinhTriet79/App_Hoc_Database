@@ -71,23 +71,32 @@
         <button id="btn-print" title="In chương hiện tại ra giấy hoặc PDF">🖨️ Print</button>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group field-row" style="margin: 0;">
-          <label for="font-size-slider">Cỡ chữ:</label>
-          <input id="font-size-slider" type="range" class="has-box-indicator" min="13" max="20" value="15" style="width: 75px;">
+          <label for="lang-mode-select">Backend:</label>
+          <select id="lang-mode-select" aria-label="Chế độ ngôn ngữ Cầu nối Backend">
+            <option value="both">☕+🟣 Java &amp; C#</option>
+            <option value="java">☕ Chỉ Java</option>
+            <option value="csharp">🟣 Chỉ C# (.NET)</option>
+          </select>
+        </div>
+        <div class="toolbar-sep"></div>
+        <div class="toolbar-group field-row" style="margin: 0;">
+          <label for="font-size-slider">Cỡ:</label>
+          <input id="font-size-slider" type="range" class="has-box-indicator" min="13" max="20" value="15" style="width: 65px;">
           <span id="font-size-val">15px</span>
         </div>
         <div class="toolbar-sep"></div>
         <div class="toolbar-group field-row" style="margin: 0;">
-          <label for="theme-select">Giao diện:</label>
+          <label for="theme-select">Theme:</label>
           <select id="theme-select" aria-label="Chọn giao diện">
-            <option value="classic">Win98 / Win2000 Classic</option>
-            <option value="xp">Windows XP Luna Blue</option>
-            <option value="borland">Borland Turbo C++ 3.1</option>
+            <option value="classic">Win98 / 2000 Classic</option>
+            <option value="xp">Windows XP Luna</option>
+            <option value="borland">Borland Turbo C++</option>
             <option value="crt">Green Phosphor CRT</option>
           </select>
         </div>
         <div class="toolbar-group field-row" style="margin: 0;">
           <input type="checkbox" id="chk-crt-scanlines">
-          <label for="chk-crt-scanlines">CRT Scanlines</label>
+          <label for="chk-crt-scanlines">Scanlines</label>
         </div>
       </div>
 
