@@ -1,0 +1,383 @@
+/* ==========================================================================
+ * FILE: assets/css/layout.css
+ * MÔ TẢ: Khung cửa sổ cố định Microsoft HTML Help (.CHM), Titlebar, Menubar, Toolbar, Split Pane, Statusbar
+ * ========================================================================== */
+
+/* ==========================================================================
+       2. GLOBAL RESET & FIXED VIEWPORT CHM SHELL
+       ========================================================================== */
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      background: var(--bg-window);
+      color: var(--text-main);
+    }
+
+    /* Optional CRT scanlines overlay */
+    body.crt-scanlines::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0) 0px,
+        rgba(0, 0, 0, 0) 2px,
+        rgba(0, 20, 0, 0.24) 3px,
+        rgba(0, 0, 0, 0.32) 4px
+      );
+    }
+
+    #chm-window {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-window);
+      border: 2px solid var(--border-light);
+      border-right-color: var(--border-dkdk);
+      border-bottom-color: var(--border-dkdk);
+      overflow: hidden;
+    }
+
+    /* 1. Title Bar */
+    #title-bar {
+      height: 28px;
+      min-height: 28px;
+      background: linear-gradient(90deg, var(--title-grad-start), var(--title-grad-end));
+      color: var(--title-text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 6px;
+      font-weight: bold;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .title-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+    .chm-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      background: #ffff00;
+      color: #000;
+      font-size: 10px;
+      font-weight: 900;
+      border: 1px solid #000;
+    }
+    .win-btns {
+      display: flex;
+      gap: 3px;
+    }
+    .win-btn {
+      width: 22px;
+      height: 20px;
+      background: var(--bg-window);
+      color: var(--text-main);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-dkdk);
+      border-bottom: 1px solid var(--border-dkdk);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+    }
+    .win-btn:active {
+      border-top-color: var(--border-dkdk);
+      border-left-color: var(--border-dkdk);
+      border-right-color: var(--border-light);
+      border-bottom-color: var(--border-light);
+    }
+
+    /* 2. Menu Bar */
+    #menu-bar {
+      min-height: 28px;
+      background: var(--bg-window);
+      border-bottom: 1px solid var(--border-dark);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 6px;
+      flex-wrap: wrap;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .menu-items {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 2px;
+    }
+    .menu-btn {
+      background: transparent;
+      color: var(--text-main);
+      border: 1px solid transparent;
+      padding: 3px 8px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .menu-btn:hover, .menu-btn.active {
+      border-top-color: var(--border-light);
+      border-left-color: var(--border-light);
+      border-right-color: var(--border-dkdk);
+      border-bottom-color: var(--border-dkdk);
+      background: var(--accent-soft);
+      font-weight: bold;
+    }
+    .retro-progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .retro-progress-bar {
+      width: 110px;
+      height: 14px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border-dkdk);
+      border-left: 1px solid var(--border-dkdk);
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      padding: 1px;
+      display: flex;
+    }
+    .retro-progress-fill {
+      height: 100%;
+      background: repeating-linear-gradient(
+        90deg,
+        var(--accent) 0px,
+        var(--accent) 6px,
+        transparent 6px,
+        transparent 8px
+      );
+      width: 0%;
+      transition: width 0.2s;
+    }
+
+    /* 3. Toolbar */
+    #tool-bar {
+      min-height: 34px;
+      background: var(--bg-window);
+      border-bottom: 1px solid var(--border-dark);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 3px 6px;
+      flex-shrink: 0;
+    }
+    .chm-btn {
+      background: var(--bg-window);
+      color: var(--text-main);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-dkdk);
+      border-bottom: 1px solid var(--border-dkdk);
+      padding: 3px 8px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .chm-btn:hover {
+      background: var(--accent-soft);
+    }
+    .chm-btn:active, .chm-btn.active {
+      border-top-color: var(--border-dkdk);
+      border-left-color: var(--border-dkdk);
+      border-right-color: var(--border-light);
+      border-bottom-color: var(--border-light);
+      background: var(--accent-soft);
+      font-weight: bold;
+    }
+    .chm-select, .chm-input {
+      background: var(--bg-panel);
+      color: var(--text-main);
+      border-top: 1px solid var(--border-dkdk);
+      border-left: 1px solid var(--border-dkdk);
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      padding: 2px 5px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+    }
+    .toolbar-sep {
+      width: 2px;
+      height: 22px;
+      border-left: 1px solid var(--border-dark);
+      border-right: 1px solid var(--border-light);
+      margin: 0 2px;
+    }
+    .toolbar-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+    /* 4. Split Workspace */
+    #workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+      padding: 3px;
+      gap: 4px;
+    }
+
+    /* Left Pane (3 Tabs: TOC Tree, Index, Full-text Search) */
+    #left-pane {
+      width: 300px;
+      min-width: 240px;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-window);
+      flex-shrink: 0;
+    }
+    #left-pane.collapsed {
+      display: none !important;
+    }
+    .left-tabs {
+      display: flex;
+      gap: 2px;
+      padding-top: 2px;
+    }
+    .left-tab {
+      flex: 1;
+      text-align: center;
+      padding: 4px 4px;
+      background: var(--bg-window);
+      color: var(--text-main);
+      border-top: 1px solid var(--border-light);
+      border-left: 1px solid var(--border-light);
+      border-right: 1px solid var(--border-dkdk);
+      border-bottom: 1px solid var(--border-dark);
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .left-tab.active {
+      background: var(--bg-sidebar);
+      border-bottom-color: var(--bg-sidebar);
+      font-weight: bold;
+    }
+    .left-tab-body {
+      flex: 1;
+      background: var(--bg-sidebar);
+      border-top: 1px solid var(--border-dkdk);
+      border-left: 1px solid var(--border-dkdk);
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      overflow-y: auto;
+      padding: 6px;
+    }
+
+    /* TOC Tree Styling */
+    .tree-group {
+      margin-bottom: 4px;
+    }
+    .tree-node {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .tree-node:hover {
+      background: var(--accent-soft);
+    }
+    .tree-node.active {
+      background: var(--accent);
+      color: var(--title-text);
+      font-weight: bold;
+    }
+    .tree-children {
+      padding-left: 16px;
+      border-left: 1px dotted var(--border-dark);
+      margin-left: 7px;
+    }
+    .tree-subnode {
+      padding: 2px 4px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-muted);
+      display: block;
+      text-decoration: none;
+    }
+    .tree-subnode:hover {
+      color: var(--text-main);
+      background: var(--accent-soft);
+    }
+
+    /* Right Reading Pane (Only this scrolls!) */
+    #reading-pane {
+      flex: 1;
+      background: var(--bg-panel);
+      border-top: 2px solid var(--border-dkdk);
+      border-left: 2px solid var(--border-dkdk);
+      border-right: 2px solid var(--border-light);
+      border-bottom: 2px solid var(--border-light);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 18px 24px 48px 24px;
+      font-family: var(--font-read);
+      font-size: var(--reading-font-size, 15px);
+      line-height: 1.65;
+      position: relative;
+    }
+
+    /* 5. Status Bar (3 Cells) */
+    #status-bar {
+      height: 24px;
+      min-height: 24px;
+      background: var(--bg-window);
+      border-top: 1px solid var(--border-dark);
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 1.5fr;
+      gap: 4px;
+      padding: 2px 4px;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .status-cell {
+      border-top: 1px solid var(--border-dkdk);
+      border-left: 1px solid var(--border-dkdk);
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      padding: 1px 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+    }

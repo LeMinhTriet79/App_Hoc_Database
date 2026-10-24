@@ -1,0 +1,127 @@
+/* ==========================================================================
+ * FILE: assets/css/themes.css
+ * MÔ TẢ: Định nghĩa biến màu sắc cho 4 giao diện (Classic, XP, Borland, CRT)
+ * MỞ RỘNG: Thêm class body.theme-<ten_moi> vào cuối file này để tạo giao diện mới.
+ * ========================================================================== */
+
+/* ==========================================================================
+       1. THEME VARIABLES (4 THEMES: classic, xp, borland, crt)
+       ========================================================================== */
+    :root, body.theme-classic {
+      --bg-window: #d4d0c8;
+      --bg-panel: #ffffff;
+      --bg-sidebar: #f4f2ee;
+      --bg-code: #f5f5f0;
+      --bg-card: #ffffff;
+      --bg-table-head: #e4e0d8;
+      --bg-table-alt: #f9f8f6;
+      --text-main: #111111;
+      --text-muted: #555555;
+      --text-code: #000080;
+      --title-grad-start: #0a246a;
+      --title-grad-end: #a6caf0;
+      --title-text: #ffffff;
+      --border-light: #ffffff;
+      --border-dark: #808080;
+      --border-dkdk: #404040;
+      --accent: #0a246a;
+      --accent-soft: #dce6f7;
+      --badge-chuan-bg: #107c41;
+      --badge-chuan-fg: #ffffff;
+      --badge-tsql-bg: #8a3b00;
+      --badge-tsql-fg: #ffffff;
+      --ok-color: #0e700e;
+      --err-color: #a80000;
+      --warn-bg: #fff9db;
+      --warn-border: #d9a300;
+      --font-ui: "Tahoma", "MS Sans Serif", "Segoe UI", sans-serif;
+      --font-read: "Segoe UI", "Tahoma", Arial, sans-serif;
+      --font-mono: "Consolas", "Courier New", monospace;
+    }
+
+    body.theme-xp {
+      --bg-window: #ece9d8;
+      --bg-panel: #ffffff;
+      --bg-sidebar: #f7f6f0;
+      --bg-code: #f0f4ff;
+      --bg-card: #ffffff;
+      --bg-table-head: #d6dff7;
+      --bg-table-alt: #f5f8ff;
+      --text-main: #000000;
+      --text-muted: #4a5568;
+      --text-code: #002d9c;
+      --title-grad-start: #0054e3;
+      --title-grad-end: #3d95ff;
+      --title-text: #ffffff;
+      --border-light: #ffffff;
+      --border-dark: #aca899;
+      --border-dkdk: #716f64;
+      --accent: #0054e3;
+      --accent-soft: #e1ecff;
+      --badge-chuan-bg: #2b8a3e;
+      --badge-chuan-fg: #ffffff;
+      --badge-tsql-bg: #d9480f;
+      --badge-tsql-fg: #ffffff;
+      --ok-color: #1b6e29;
+      --err-color: #c92a2a;
+      --warn-bg: #fff3bf;
+      --warn-border: #f08c00;
+    }
+
+    body.theme-borland {
+      --bg-window: #000080;
+      --bg-panel: #00005a;
+      --bg-sidebar: #00006e;
+      --bg-code: #001242;
+      --bg-card: #000068;
+      --bg-table-head: #003a6c;
+      --bg-table-alt: #000c4d;
+      --text-main: #ffff55;
+      --text-muted: #55ffff;
+      --text-code: #ffffff;
+      --title-grad-start: #00aaaa;
+      --title-grad-end: #005555;
+      --title-text: #000000;
+      --border-light: #55ffff;
+      --border-dark: #008888;
+      --border-dkdk: #ffffff;
+      --accent: #55ffff;
+      --accent-soft: #003380;
+      --badge-chuan-bg: #00aa00;
+      --badge-chuan-fg: #ffff55;
+      --badge-tsql-bg: #aa5500;
+      --badge-tsql-fg: #ffffff;
+      --ok-color: #55ff55;
+      --err-color: #ff5555;
+      --warn-bg: #332b00;
+      --warn-border: #ffff55;
+    }
+
+    body.theme-crt {
+      --bg-window: #071407;
+      --bg-panel: #040d04;
+      --bg-sidebar: #061206;
+      --bg-code: #020802;
+      --bg-card: #061306;
+      --bg-table-head: #0d2b0d;
+      --bg-table-alt: #071707;
+      --text-main: #33ff33;
+      --text-muted: #1fb81f;
+      --text-code: #66ff66;
+      --title-grad-start: #0f3d0f;
+      --title-grad-end: #1f7a1f;
+      --title-text: #66ff66;
+      --border-light: #29a329;
+      --border-dark: #145214;
+      --border-dkdk: #33ff33;
+      --accent: #33ff33;
+      --accent-soft: #0d2e0d;
+      --badge-chuan-bg: #196619;
+      --badge-chuan-fg: #66ff66;
+      --badge-tsql-bg: #554400;
+      --badge-tsql-fg: #ffff66;
+      --ok-color: #55ff55;
+      --err-color: #ff5555;
+      --warn-bg: #112200;
+      --warn-border: #33ff33;
+    }

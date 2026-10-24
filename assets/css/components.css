@@ -1,0 +1,313 @@
+/* ==========================================================================
+ * FILE: assets/css/components.css
+ * MÔ TẢ: Bảng dữ liệu, Khối code, Thẻ từ khóa, Phòng Lab SQL, Toast, Modal, Responsive & In ấn
+ * ========================================================================== */
+
+/* ==========================================================================
+       3. CONTENT TYPOGRAPHY, TABLES, CODE BLOCKS, CALLOUTS
+       ========================================================================== */
+    .ch-banner {
+      background: var(--bg-table-head);
+      border: 1px solid var(--border-dark);
+      border-left: 5px solid var(--accent);
+      padding: 12px 16px;
+      margin-bottom: 18px;
+    }
+    .ch-code {
+      font-family: var(--font-mono);
+      font-size: 0.82em;
+      font-weight: bold;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+    }
+    .ch-banner h1 {
+      margin: 4px 0 6px 0;
+      font-size: 1.45em;
+      line-height: 1.3;
+    }
+    .ch-source {
+      font-size: 0.85em;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-dark);
+      padding: 14px 18px;
+      margin-bottom: 18px;
+    }
+    .section-card h2 {
+      margin-top: 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--accent);
+      font-size: 1.2em;
+      color: var(--accent);
+    }
+    .section-card h3 {
+      margin-top: 14px;
+      margin-bottom: 6px;
+      font-size: 1.05em;
+    }
+
+    .chm-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 14px 0;
+      font-size: 0.92em;
+    }
+    .chm-table th, .chm-table td {
+      border: 1px solid var(--border-dark);
+      padding: 6px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .chm-table th {
+      background: var(--bg-table-head);
+      font-weight: bold;
+    }
+    .chm-table tr:nth-child(even) td {
+      background: var(--bg-table-alt);
+    }
+
+    pre.code-block {
+      background: var(--bg-code);
+      color: var(--text-code);
+      border: 1px solid var(--border-dark);
+      border-left: 4px solid var(--accent);
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      line-height: 1.45;
+      margin: 8px 0;
+      position: relative;
+    }
+    code {
+      font-family: var(--font-mono);
+      background: var(--bg-code);
+      color: var(--text-code);
+      padding: 1px 4px;
+      font-size: 0.92em;
+    }
+    pre code {
+      padding: 0;
+      background: transparent;
+    }
+
+    .badge-chuan {
+      display: inline-block;
+      background: var(--badge-chuan-bg);
+      color: var(--badge-chuan-fg);
+      padding: 1px 6px;
+      font-family: var(--font-mono);
+      font-size: 0.8em;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+    .badge-tsql {
+      display: inline-block;
+      background: var(--badge-tsql-bg);
+      color: var(--badge-tsql-fg);
+      padding: 1px 6px;
+      font-family: var(--font-mono);
+      font-size: 0.8em;
+      font-weight: bold;
+      border-radius: 2px;
+    }
+
+    .callout-info, .callout-warn {
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-left: 4px solid var(--warn-border);
+      padding: 10px 12px;
+      margin: 10px 0;
+      font-size: 0.94em;
+    }
+    .trace-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .trace-step {
+      background: var(--bg-table-alt);
+      border: 1px solid var(--border-dark);
+      border-left: 4px solid var(--accent);
+      padding: 8px 12px;
+    }
+
+    .example-box, .exercise-box {
+      border: 1px solid var(--border-dark);
+      background: var(--bg-table-alt);
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .example-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .hint-tier {
+      margin-top: 6px;
+      border: 1px dashed var(--border-dark);
+      padding: 6px 10px;
+      background: var(--bg-card);
+    }
+
+    kbd {
+      background: var(--bg-window);
+      border: 1px solid var(--border-dkdk);
+      border-bottom-width: 2px;
+      padding: 1px 5px;
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+    }
+
+    /* ==========================================================================
+       4. SQL LAB, SIMULATORS, INTERVIEW ROOM & MODALS
+       ========================================================================== */
+    .lab-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 14px;
+    }
+    .sql-editor {
+      width: 100%;
+      min-height: 150px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: var(--bg-code);
+      color: var(--text-code);
+      border: 2px inset var(--border-dark);
+      padding: 8px;
+      resize: vertical;
+    }
+    .er-box {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      line-height: 1.3;
+      background: var(--bg-code);
+      color: var(--text-code);
+      padding: 10px;
+      border: 1px solid var(--border-dark);
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .grade-pass {
+      background: rgba(16, 124, 65, 0.14);
+      border: 2px solid var(--ok-color);
+      color: var(--ok-color);
+      padding: 10px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+    .grade-fail {
+      background: rgba(168, 0, 0, 0.12);
+      border: 2px solid var(--err-color);
+      color: var(--err-color);
+      padding: 10px;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    /* Toast Notification */
+    #toast-container {
+      position: fixed;
+      bottom: 32px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .chm-toast {
+      background: var(--bg-window);
+      color: var(--text-main);
+      border-top: 2px solid var(--border-light);
+      border-left: 2px solid var(--border-light);
+      border-right: 2px solid var(--border-dkdk);
+      border-bottom: 2px solid var(--border-dkdk);
+      padding: 8px 14px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: bold;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.4);
+    }
+
+    /* Modal Dialog */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      z-index: 9990;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-window {
+      width: 100%;
+      max-width: 680px;
+      max-height: 85vh;
+      background: var(--bg-window);
+      border-top: 2px solid var(--border-light);
+      border-left: 2px solid var(--border-light);
+      border-right: 2px solid var(--border-dkdk);
+      border-bottom: 2px solid var(--border-dkdk);
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-body {
+      padding: 14px 18px;
+      overflow-y: auto;
+      background: var(--bg-panel);
+      margin: 4px;
+      border: 1px inset var(--border-dark);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    /* Responsive (<800px drawer & lab stacking) */
+    @media (max-width: 800px) {
+      #left-pane {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 500;
+        width: 280px;
+        box-shadow: 4px 0 12px rgba(0,0,0,0.45);
+      }
+      .lab-grid {
+        grid-template-columns: 1fr;
+      }
+      #status-bar {
+        grid-template-columns: 1fr;
+      }
+      .status-cell:nth-child(2), .status-cell:nth-child(3) {
+        display: none;
+      }
+    }
+
+    /* Print Stylesheet: Only print reading pane */
+    @media print {
+      #title-bar, #menu-bar, #tool-bar, #left-pane, #status-bar, #toast-container, .modal-backdrop {
+        display: none !important;
+      }
+      html, body, #chm-window, #workspace, #reading-pane {
+        position: static !important;
+        overflow: visible !important;
+        height: auto !important;
+        border: none !important;
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+    }
