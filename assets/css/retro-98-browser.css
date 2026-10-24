@@ -955,21 +955,37 @@ body.theme-crt #status-bar .status-bar-field {
   color: var(--text-main) !important;
 }
 
-/* Bố cục 2 cột chuyên nghiệp cho Phòng Thực Hành SQL */
+/* Bố cục 2 cột chuyên nghiệp cho Phòng Thực Hành SQL - Khắc phục lỗi che bảng (Issue 2) */
 .lab-grid {
   display: grid;
-  grid-template-columns: minmax(300px, 43%) minmax(340px, 57%);
-  gap: 14px;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+  gap: 16px;
   align-items: start;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-@media (max-width: 1024px) {
+.lab-col-left,
+.lab-col-right {
+  min-width: 0 !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+fieldset, fieldset.retro-groupbox {
+  min-width: 0 !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1080px) {
   .lab-grid {
     grid-template-columns: 1fr;
   }
 }
 
-/* Khung vẽ Sơ đồ ER ASCII rõ nét */
+/* Khung vẽ Sơ đồ ER ASCII rõ nét - Cuộn ngang bên trong khung, không tràn sang cột phải */
 .er-box {
   font-family: var(--font-mono);
   font-size: 12px;
@@ -978,8 +994,10 @@ body.theme-crt #status-bar .status-bar-field {
   color: var(--text-code);
   border: 1px solid var(--border-dark);
   padding: 10px 12px;
-  overflow-x: auto;
-  white-space: pre;
+  overflow-x: auto !important;
+  white-space: pre !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
   margin: 6px 0;
 }
 
@@ -1395,3 +1413,69 @@ pre.code-block,
   background: var(--bg-table-alt) !important;
   color: var(--text-main) !important;
 }
+
+/* ==========================================================================
+   16. FIX TOÀN DIỆN: CHỐNG TRÀN BẢNG NỘI DUNG & BỐ CỤC PHÒNG LAB
+   ========================================================================== */
+
+/* Fix 1: Chống tràn bảng (Issue 1) - Override triệt để 98.css white-space: nowrap */
+table.chm-table,
+.section-card table,
+.chapter-content-wrap table,
+.exercise-box table,
+.example-box table,
+table.interactive.chm-table {
+  width: 100% !important;
+  max-width: 100% !important;
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+  white-space: normal !important;
+}
+
+table.chm-table th,
+table.chm-table td,
+.section-card table th,
+.section-card table td,
+.exercise-box table th,
+.exercise-box table td,
+.example-box table th,
+.example-box table td {
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+  vertical-align: top !important;
+  padding: 6px 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* Cho phép toàn bộ thẻ khối nội dung chứa bảng tự động cuộn ngang nếu màn hình quá hẹp */
+.section-card,
+.chapter-content-wrap,
+.example-box,
+.exercise-box,
+.toc-home-wrap {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix 2: SQL Lab Khung kết quả truy vấn & Bảng kết quả (Issue 2) */
+#sql-result-area {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.sunken-panel.sql-result-sunken {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: auto !important;
+  box-sizing: border-box !important;
+}
+
+.sql-result-table {
+  max-width: 100%;
+  width: max-content;
+}
+

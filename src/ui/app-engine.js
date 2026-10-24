@@ -1048,13 +1048,14 @@
     return html;
   }
 
-  function renderFruitStore130View(filterChapterId) {
+  function renderFruitStore130View(filterChapterId, preserveScroll) {
     state.lastView = "fruitstore130";
     updateAddressBar("chm://bikip-csdl-v2005/fruitstore-130-drills.htm");
     updateStatusCell(2, "🍎 Chuyên Đề: 130 Bài Tập FruitStore (A–Z)");
 
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
+    var prevScroll = (preserveScroll && pane) ? pane.scrollTop : 0;
 
     var allDrills = (global.SQLMasterRegistry && global.SQLMasterRegistry.fruitstoreDrills) ? global.SQLMasterRegistry.fruitstoreDrills : [];
     var solvedMap = state.completedItems || {};
@@ -1184,21 +1185,25 @@
 
     html += '</div>';
     pane.innerHTML = html;
-    pane.scrollTop = 0;
+    if (preserveScroll && pane) {
+      pane.scrollTop = prevScroll;
+    } else if (pane) {
+      pane.scrollTop = 0;
+    }
 
-    // Gắn sự kiện cho các bộ lọc
+    // Gắn sự kiện cho các bộ lọc (giữ nguyên vị trí cuộn khi lọc / tìm kiếm)
     var chFilterEl = document.getElementById("fs-filter-chapter");
     if (chFilterEl) {
       chFilterEl.onchange = function() {
         state.fsDrillFilterChap = this.value;
-        renderFruitStore130View(this.value);
+        renderFruitStore130View(this.value, true);
       };
     }
     var stFilterEl = document.getElementById("fs-filter-status");
     if (stFilterEl) {
       stFilterEl.onchange = function() {
         state.fsDrillFilterStatus = this.value;
-        renderFruitStore130View(state.fsDrillFilterChap);
+        renderFruitStore130View(state.fsDrillFilterChap, true);
       };
     }
     var searchEl = document.getElementById("fs-search-input");
@@ -1207,7 +1212,7 @@
         state.fsDrillSearch = this.value;
         clearTimeout(window._fsSearchTimeout);
         window._fsSearchTimeout = setTimeout(function() {
-          renderFruitStore130View(state.fsDrillFilterChap);
+          renderFruitStore130View(state.fsDrillFilterChap, true);
         }, 250);
       };
     }
@@ -1776,7 +1781,7 @@
   /* ========================================================================
      8. RENDER 6 BỘ MÔ PHỎNG TRỰC QUAN (SIMULATORS VIEW - TASK FIX 06)
      ======================================================================== */
-  function renderSimulatorsView(simId) {
+  function renderSimulatorsView(simId, preserveScroll) {
     state.lastView = "simulators";
     if (simId) state.activeSimulatorId = simId;
     var currentSimId = state.activeSimulatorId || "join";
@@ -1786,6 +1791,7 @@
 
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
+    var prevScroll = (preserveScroll && pane) ? pane.scrollTop : 0;
 
     var sims = DATA.simulators || {};
     var sim = sims[currentSimId] || sims.join;
@@ -1834,7 +1840,11 @@
     html += '</div></div></div>';
 
     pane.innerHTML = html;
-    pane.scrollTop = 0;
+    if (preserveScroll && pane) {
+      pane.scrollTop = prevScroll;
+    } else if (pane) {
+      pane.scrollTop = 0;
+    }
   }
 
   function renderJoinSimulator(sim) {
@@ -2302,13 +2312,14 @@
   /* ========================================================================
      9. RENDER PHÒNG PHỎNG VẤN & LEETCODE (INTERVIEW ROOM - TASK FIX 07)
      ======================================================================== */
-  function renderInterviewView() {
+  function renderInterviewView(preserveScroll) {
     state.lastView = "interview";
     updateAddressBar("chm://bikip-csdl-v2005/interview-room/leitner");
     updateStatusCell(2, "🎯 Luyện Phỏng Vấn Leitner & 12 LeetCode SQL");
 
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
+    var prevScroll = (preserveScroll && pane) ? pane.scrollTop : 0;
 
     var bank = DATA.interview_bank || [];
     var filterLevel = window._INTERVIEW_FILTER || "ALL";
@@ -2498,19 +2509,24 @@
     html += '</tbody></table></div></div>';
 
     pane.innerHTML = html;
-    pane.scrollTop = 0;
+    if (preserveScroll && pane) {
+      pane.scrollTop = prevScroll;
+    } else if (pane) {
+      pane.scrollTop = 0;
+    }
   }
 
   /* ========================================================================
      10. RENDER SỔ TAY 3 DÒNG TỔNG HỢP 77 MỤC (TASK FIX 07)
      ======================================================================== */
-  function renderNotesView() {
+  function renderNotesView(preserveScroll) {
     state.lastView = "notes";
     updateAddressBar("chm://bikip-csdl-v2005/notebook/progress");
     updateStatusCell(2, "📝 Sổ Tay 3 Dòng & Quản Lý Tiến Độ");
 
     var pane = document.getElementById("reading-pane");
     if (!pane) return;
+    var prevScroll = (preserveScroll && pane) ? pane.scrollTop : 0;
 
     var allProbs = getAll77LabProblems();
     var filterCh = window._NOTE_FILTER_CH || "ALL";
@@ -2595,7 +2611,11 @@
     html += '</div>';
 
     pane.innerHTML = html;
-    pane.scrollTop = 0;
+    if (preserveScroll && pane) {
+      pane.scrollTop = prevScroll;
+    } else if (pane) {
+      pane.scrollTop = 0;
+    }
   }
 
   function renderTracksView(trackId) {
@@ -2979,7 +2999,7 @@
         state.leitnerBoxes[cardId] = targetBox;
         saveState();
         showToast("Đã chuyển thẻ #" + cardId + " sang Hộp " + targetBox);
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
 
@@ -2987,7 +3007,7 @@
       var ivBoxBtn = target.closest("[data-iv-box-filter]");
       if (ivBoxBtn) {
         window._INTERVIEW_BOX_FILTER = parseInt(ivBoxBtn.getAttribute("data-iv-box-filter"), 10);
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
 
@@ -2995,7 +3015,7 @@
       var ivModeBtn = target.closest("[data-iv-mode]");
       if (ivModeBtn) {
         window._INTERVIEW_VIEW_MODE = ivModeBtn.getAttribute("data-iv-mode");
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
 
@@ -3023,12 +3043,12 @@
       }
       if (target.id === "btn-flip-prev") {
         window._FLIP_INDEX = Math.max(0, (window._FLIP_INDEX || 0) - 1);
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
       if (target.id === "btn-flip-next") {
         window._FLIP_INDEX = (window._FLIP_INDEX || 0) + 1;
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
 
@@ -3037,7 +3057,7 @@
         var inpK = document.getElementById("inp-btree-key");
         if (inpK) {
           window._BTREE_KEY = parseInt(inpK.value, 10) || 480;
-          renderSimulatorsView("btree");
+          renderSimulatorsView("btree", true);
         }
         return;
       }
@@ -3045,24 +3065,24 @@
       // Bước JOIN
       if (target.id === "btn-join-step") {
         window._JOIN_STEP = (window._JOIN_STEP || 0) + 1;
-        renderSimulatorsView("join");
+        renderSimulatorsView("join", true);
         return;
       }
       if (target.id === "btn-join-reset") {
         window._JOIN_STEP = 0;
-        renderSimulatorsView("join");
+        renderSimulatorsView("join", true);
         return;
       }
 
       // Bước Isolation
       if (target.id === "btn-iso-step") {
         window._ISO_STEP = (window._ISO_STEP || 0) + 1;
-        renderSimulatorsView("isolation");
+        renderSimulatorsView("isolation", true);
         return;
       }
       if (target.id === "btn-iso-reset") {
         window._ISO_STEP = 0;
-        renderSimulatorsView("isolation");
+        renderSimulatorsView("isolation", true);
         return;
       }
 
@@ -3070,7 +3090,7 @@
       var pStepBtn = target.closest("[data-exec-step]");
       if (pStepBtn) {
         window._EXEC_STEP = parseInt(pStepBtn.getAttribute("data-exec-step"), 10);
-        renderSimulatorsView("exec_order");
+        renderSimulatorsView("exec_order", true);
         return;
       }
 
@@ -3190,19 +3210,19 @@
       // Nút điều khiển Simulators
       if (target.id === "btn-exec-prev") {
         window._EXEC_STEP = Math.max(0, (window._EXEC_STEP || 0) - 1);
-        renderSimulatorsView("exec_order");
+        renderSimulatorsView("exec_order", true);
         return;
       }
       if (target.id === "btn-exec-next") {
         var maxSteps = (DATA.simulators && DATA.simulators.exec_order) ? DATA.simulators.exec_order.steps.length - 1 : 8;
         window._EXEC_STEP = Math.min(maxSteps, (window._EXEC_STEP || 0) + 1);
-        renderSimulatorsView("exec_order");
+        renderSimulatorsView("exec_order", true);
         return;
       }
       var normBtn = target.closest("[data-set-norm-stage]");
       if (normBtn) {
         window._NORM_STAGE = parseInt(normBtn.getAttribute("data-set-norm-stage"), 10);
-        renderSimulatorsView("normalization");
+        renderSimulatorsView("normalization", true);
         return;
       }
 
@@ -3454,59 +3474,59 @@
       // JOIN mode radio
       if (e.target.name === "join-mode") {
         window._JOIN_MODE = e.target.value;
-        renderSimulatorsView("join");
+        renderSimulatorsView("join", true);
         return;
       }
 
       // B-Tree scenario radio
       if (e.target.name === "btree-sc") {
         window._BTREE_SCENARIO = e.target.value;
-        renderSimulatorsView("btree");
+        renderSimulatorsView("btree", true);
         return;
       }
 
       // Isolation level radio
       if (e.target.name === "iso-level") {
         window._ISO_LEVEL = e.target.value;
-        renderSimulatorsView("isolation");
+        renderSimulatorsView("isolation", true);
         return;
       }
 
       // Injection scenario radio
       if (e.target.name === "inj-sc") {
         window._INJECT_SCENARIO = parseInt(e.target.value, 10);
-        renderSimulatorsView("injection");
+        renderSimulatorsView("injection", true);
         return;
       }
 
       // Filter level trong phỏng vấn
       if (e.target.name === "iv-lvl") {
         window._INTERVIEW_FILTER = e.target.value;
-        renderInterviewView();
+        renderInterviewView(true);
         return;
       }
 
       // Slider trong Exec Order
       if (e.target.id === "exec-step-slider") {
         window._EXEC_STEP = parseInt(e.target.value, 10);
-        renderSimulatorsView("exec_order");
+        renderSimulatorsView("exec_order", true);
         return;
       }
 
       // Bộ lọc trong Sổ tay 3 dòng
       if (e.target.id === "note-filter-ch") {
         window._NOTE_FILTER_CH = e.target.value;
-        renderNotesView();
+        renderNotesView(true);
         return;
       }
       if (e.target.id === "note-filter-diff") {
         window._NOTE_FILTER_DIFF = e.target.value;
-        renderNotesView();
+        renderNotesView(true);
         return;
       }
       if (e.target.id === "note-filter-done") {
         window._NOTE_FILTER_DONE = e.target.value;
-        renderNotesView();
+        renderNotesView(true);
         return;
       }
 
@@ -3561,18 +3581,18 @@
           clearInterval(window._EXAM_TIMER_INTERVAL);
           window._EXAM_RUNNING = false;
           showToast("⏰ HẾT GIỜ LÀM BÀI PHỎNG VẤN 15 PHÚT! Hãy đối chiếu lại các câu chưa thuộc.", true);
-          renderInterviewView();
+          renderInterviewView(true);
         }
       }, 1000);
     }
-    renderInterviewView();
+    renderInterviewView(true);
   }
 
   function resetExamTimer() {
     if (window._EXAM_TIMER_INTERVAL) clearInterval(window._EXAM_TIMER_INTERVAL);
     window._EXAM_RUNNING = false;
     window._EXAM_SECONDS = 900;
-    renderInterviewView();
+    renderInterviewView(true);
   }
 
   /* ========================================================================

@@ -348,7 +348,7 @@
       border-right: 2px solid var(--border-light);
       border-bottom: 2px solid var(--border-light);
       overflow-y: auto;
-      overflow-x: hidden;
+      overflow-x: auto;
       padding: 18px 24px 48px 24px;
       font-family: var(--font-read);
       font-size: var(--reading-font-size, 15px);
