@@ -1110,3 +1110,55 @@ body.theme-crt #status-bar .status-bar-field {
   font-weight: bold;
   margin-bottom: 10px;
 }
+
+/* --------------------------------------------------------------------------
+   14. FRUITSTORE 130 DRILLS (A-Z) & MUSCLE MEMORY CARDS
+   -------------------------------------------------------------------------- */
+.fruitstore-drills-box {
+  margin-top: 20px;
+  border-top: 3px double var(--border-dark);
+  padding: 12px;
+}
+
+.drill-pedagogy-banner {
+  background: var(--bg-window);
+  border: 1px solid var(--border-dark);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: inset 1px 1px 0 #fff;
+}
+
+.drill-card {
+  margin-bottom: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  padding: 10px;
+}
+
+.drill-card.drill-solved {
+  border-left: 5px solid var(--ok-color);
+  background: #f6fff6;
+}
+
+body.theme-crt .drill-card.drill-solved {
+  background: #081a08;
+  border-left-color: #33ff33;
+}
+
+.drill-card .example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.drill-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}

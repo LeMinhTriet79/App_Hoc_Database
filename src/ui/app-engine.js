@@ -23,6 +23,11 @@
     return;
   }
 
+  // Tự động tích hợp 130 bài tập FruitStore_Ultimate vào các chương ch01..ch13
+  if (typeof global.integrateFruitStore130Drills === "function" && DATA && DATA.chapters) {
+    global.integrateFruitStore130Drills(DATA.chapters);
+  }
+
   /* ========================================================================
      1. QUẢN LÝ TRẠNG THÁI (CORE STATE & LOCALSTORAGE)
      ======================================================================== */
@@ -308,6 +313,36 @@
       });
     });
 
+    // Nạp thêm 130 bài tập thực hành FruitStore_Ultimate (Ch01 -> Ch13)
+    var fsDrills = (global.SQLMasterRegistry && Array.isArray(global.SQLMasterRegistry.fruitstoreDrills))
+      ? global.SQLMasterRegistry.fruitstoreDrills
+      : [];
+    fsDrills.forEach(function(ex) {
+      var groupLabel = "🍎 Chương " + (ex.chapterNum || ex.chapterId.replace("ch0", "").replace("ch", "")) + ": FruitStore";
+      list.push({
+        id: ex.id,
+        chId: ex.chapterId,
+        chCode: groupLabel,
+        title: ex.title,
+        difficulty: ex.level || "Cơ bản",
+        db: "fruitstore",
+        prompt: ex.question,
+        h1: ex.hint,
+        h2: "Khuôn mẫu phản xạ: " + ex.pattern,
+        solSql: ex.sql || ex.sqlite,
+        tsql: ex.tsql,
+        pattern: ex.pattern,
+        expected: ex.expected,
+        starter_sql: "-- Đề bài: " + ex.title + " (DB: FruitStore_Ultimate)\n-- Khuôn mẫu: " + ex.pattern + "\n\n",
+        order_matters: false,
+        note3: {
+          idea: ex.pattern,
+          syntax: ex.tsql,
+          trap: ex.hint
+        }
+      });
+    });
+
     return list;
   }
 
@@ -530,6 +565,9 @@
       html += '<li><a href="#' + chId + '-s9" class="tree-item-link" data-scroll-sec="sec-interview">9. Câu hỏi phỏng vấn (' + (chObj.interview ? chObj.interview.length : 0) + ')</a></li>';
       var probCount = (chObj.basics ? chObj.basics.length : 0) + (chObj.practice ? chObj.practice.length : 0);
       html += '<li><a href="#' + chId + '-s10" class="tree-item-link" data-scroll-sec="sec-exercises">10. Bài tập tự chấm (' + probCount + ')</a></li>';
+      if (chObj.fruitstoreDrills && chObj.fruitstoreDrills.length) {
+        html += '<li><a href="#' + chId + '-fs" class="tree-item-link" data-scroll-sec="sec-fruitstore-drills">🍎 10 Bài Phản Xạ FruitStore (' + chObj.fruitstoreDrills.length + ')</a></li>';
+      }
       html += '<li><a href="#' + chId + '-s11" class="tree-item-link" data-scroll-sec="sec-summary">11. Tổng kết &amp; Trắc nghiệm</a></li>';
       html += '</ul></details></li>';
       return html;
@@ -573,6 +611,11 @@
       html += renderChapterTreeItem(ch15);
       html += '</ul></details></li>';
     }
+
+    // Nhóm 4B: Chuyên Đề 130 Bài Tập FruitStore (A-Z)
+    html += '<li><details open><summary>🍎 Chuyên Đề: 130 Bài Tập FruitStore (A–Z)</summary><ul>';
+    html += '<li><a href="#fruitstore130" class="tree-item-link ' + (state.lastView === "fruitstore130" ? "active" : "") + '" data-nav-view="fruitstore130">🍎 Toàn Bộ 130 Bài Phản Xạ (Ch01 - Ch13)</a></li>';
+    html += '</ul></details></li>';
 
     // Nhóm 5: Các Phân Khu Chức Năng
     html += '<li><details open><summary>🛠️ Phòng Thực Hành &amp; Công Cụ Chuyên Sâu</summary><ul>';
@@ -1029,6 +1072,11 @@
       html += '</section>';
     }
 
+    // Mục 10B: Luyện Phản Xạ Cơ Bắp FruitStore_Ultimate (10 Bài A-Z)
+    if (ch.fruitstoreDrills && ch.fruitstoreDrills.length) {
+      html += renderFruitStoreDrillsSection(ch);
+    }
+
     // Mục 11: Bảng tóm tắt (summary_table) + 3 Câu hỏi tự kiểm tra (quiz) + Ghi chú 3 dòng
     html += '<section class="section-card" id="sec-summary"><h2>11. Bảng Tóm Tắt Kiến Thức, Tự Kiểm Tra &amp; Ghi Chú 3 Dòng</h2>';
     if (ch.summary_table && ch.summary_table.length) {
@@ -1162,6 +1210,251 @@
   }
 
   /* ========================================================================
+     6B. CHUYÊN ĐỀ 130 BÀI TẬP PHẢN XẠ CƠ BẮP FRUITSTORE_ULTIMATE (A-Z)
+     ======================================================================== */
+  window.openExerciseInLab = function(exerciseId) {
+    if (!exerciseId) return;
+    var allProbs = getAll77LabProblems();
+    var problem = allProbs.find(function(p) { return p.id === exerciseId; });
+    var dbId = (problem && problem.db) ? problem.db : "fruitstore";
+    state.activeDbId = dbId;
+    navigateTo("lab", dbId);
+    setTimeout(function() {
+      loadProblemIntoLab(exerciseId);
+      var probSel = document.getElementById("lab-problem-select");
+      if (probSel) {
+        probSel.value = exerciseId;
+      }
+    }, 120);
+  };
+
+  function renderFruitStoreDrillsSection(chapter) {
+    var drills = chapter.fruitstoreDrills || [];
+    if (!drills.length) return "";
+    var solvedMap = state.completedItems || {};
+    var solvedCount = drills.filter(function(d) { return solvedMap[d.id]; }).length;
+
+    var html = '<section class="section-card" id="sec-fruitstore-drills" style="margin-top:20px; border-top:3px double var(--border-dark); padding-top:16px;">' +
+      '<div class="ch-code" style="color:var(--accent); font-weight:bold;">🍎 FRUITSTORE ULTIMATE // 10 BÀI TẬP PHẢN XẠ CƠ BẮP (MUSCLE MEMORY)</div>' +
+      '<h2>10B. Luyện Phản Xạ Cơ Bắp FruitStore_Ultimate (' + solvedCount + '/' + drills.length + ' Bài Đã Đạt Chuẩn)</h2>' +
+      '<div class="drill-pedagogy-banner">' +
+        '<strong>🎯 Phương pháp Sư phạm Phản Xạ Lặp (Muscle Memory):</strong><br>' +
+        '• <b>Bài 1–3 (Cụm Phản Xạ Mẫu A):</b> Lặp lại cú pháp cốt lõi 1 trên 3 bảng dữ liệu khác nhau để tay gõ tự nhiên không cần tra cứu.<br>' +
+        '• <b>Bài 4–6 (Cụm Phản Xạ Mẫu B):</b> Lặp lại cú pháp cốt lõi 2 trên 3 bảng dữ liệu khác nhau.<br>' +
+        '• <b>Bài 7–8 (Cụm Tổ Hợp Trung Cấp):</b> Ghép các kỹ thuật trên dữ liệu giao dịch nhiều bảng.<br>' +
+        '• <b>Bài 9–10 (Cụm Thực Chiến Nâng Cao):</b> Xử lý bài toán báo cáo doanh nghiệp hoặc bẫy phỏng vấn kinh điển.' +
+      '</div>' +
+      '<div class="drill-list">';
+
+    drills.forEach(function(ex) {
+      var isSolved = !!solvedMap[ex.id];
+      html += '<div class="exercise-box drill-card ' + (isSolved ? "drill-solved" : "") + '">' +
+        '<div class="example-header">' +
+          '<span>' +
+            (isSolved ? "✅ " : "📝 ") + "<b>[" + escapeHtml(ex.id) + "] " + escapeHtml(ex.title) + "</b> " +
+            '<span class="badge-tsql" style="font-size:11px;">' + escapeHtml(ex.level) + '</span> ' +
+            '<span class="badge-chuan">[DB: FruitStore]</span>' +
+          '</span>' +
+          '<button class="default" onclick="window.openExerciseInLab(\'' + escapeHtml(ex.id) + '\')">' +
+            '🧪 Làm &amp; Chấm Điểm Trong SQL Lab ►' +
+          '</button>' +
+        '</div>' +
+        '<div style="margin:6px 0; font-family:var(--font-mono); background:#fffbe6; border:1px solid #d4b106; padding:4px 8px; font-size:12px;">' +
+          '<strong>Khuôn mẫu phản xạ:</strong> <code>' + escapeHtml(ex.pattern) + '</code>' +
+        '</div>' +
+        '<p style="margin:6px 0; font-size:13px;"><strong>Đề bài:</strong> ' + escapeHtml(ex.question) + '</p>' +
+        '<div class="drill-actions">' +
+          '<details class="hint-tier" style="width:100%;">' +
+            '<summary style="cursor:pointer; font-weight:bold; color:var(--accent);">💡 Xem Gợi Ý &amp; Đối Chiếu Đáp Án Chuẩn (T-SQL vs SQLite)</summary>' +
+            '<div style="margin-top:6px; padding:8px; background:var(--bg-card); border:1px inset var(--border-dark);">' +
+              '<p style="margin:0 0 6px 0;"><strong>💡 Gợi ý tư duy:</strong> ' + escapeHtml(ex.hint) + '</p>' +
+              '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:8px;">' +
+                '<div>' +
+                  '<strong>Chuẩn T-SQL (SQL Server / SSMS):</strong>' +
+                  '<pre class="code-block" style="margin-top:4px; max-height:180px; overflow:auto;"><code>' + escapeHtml(ex.tsql) + '</code></pre>' +
+                '</div>' +
+                '<div>' +
+                  '<strong>Chuẩn SQLite (SQL Lab):</strong>' +
+                  '<pre class="code-block" style="margin-top:4px; max-height:180px; overflow:auto;"><code>' + escapeHtml(ex.sql) + '</code></pre>' +
+                '</div>' +
+              '</div>' +
+              (ex.expected ? ('<div style="margin-top:8px;"><strong>Bảng kết quả chuẩn (' + (ex.expected.rows ? ex.expected.rows.length : 0) + ' dòng):</strong>' + renderStaticTableHtml(ex.expected) + '</div>') : '') +
+            '</div>' +
+          '</details>' +
+        '</div>' +
+      '</div>';
+    });
+
+    html += '</div></section>';
+    return html;
+  }
+
+  function renderFruitStore130View(filterChapterId) {
+    state.lastView = "fruitstore130";
+    updateAddressBar("chm://bikip-csdl-v2005/fruitstore-130-drills.htm");
+    updateStatusCell(2, "🍎 Chuyên Đề: 130 Bài Tập FruitStore (A–Z)");
+
+    var pane = document.getElementById("reading-pane");
+    if (!pane) return;
+
+    var allDrills = (global.SQLMasterRegistry && global.SQLMasterRegistry.fruitstoreDrills) ? global.SQLMasterRegistry.fruitstoreDrills : [];
+    var solvedMap = state.completedItems || {};
+    var solvedCount = allDrills.filter(function(d) { return solvedMap[d.id]; }).length;
+    var totalCount = allDrills.length || 130;
+    var percent = Math.min(100, Math.round((solvedCount / totalCount) * 100));
+
+    var activeChapFilter = filterChapterId || state.fsDrillFilterChap || "all";
+    var activeStatusFilter = state.fsDrillFilterStatus || "all";
+    var searchQuery = (state.fsDrillSearch || "").trim().toLowerCase();
+
+    // Lọc danh sách bài tập
+    var filteredDrills = allDrills.filter(function(d) {
+      if (activeChapFilter !== "all" && d.chapterId !== activeChapFilter) return false;
+      var isDone = !!solvedMap[d.id];
+      if (activeStatusFilter === "done" && !isDone) return false;
+      if (activeStatusFilter === "undone" && isDone) return false;
+      if (searchQuery) {
+        var match = (d.title && d.title.toLowerCase().indexOf(searchQuery) !== -1) ||
+                    (d.question && d.question.toLowerCase().indexOf(searchQuery) !== -1) ||
+                    (d.pattern && d.pattern.toLowerCase().indexOf(searchQuery) !== -1) ||
+                    (d.id && d.id.toLowerCase().indexOf(searchQuery) !== -1);
+        if (!match) return false;
+      }
+      return true;
+    });
+
+    var html = '<div class="chapter-content-wrap">' +
+      '<div class="ch-banner">' +
+        '<div class="ch-code">FRUITSTORE ULTIMATE // 130 MUSCLE MEMORY DRILLS (CH01 - CH13)</div>' +
+        '<h1>🍎 Chuyên Đề: 130 Bài Tập SQL Thực Hành A Đến Z (FruitStore_Ultimate)</h1>' +
+        '<div class="ch-source">Phương pháp Phản Xạ Cơ Bắp (Muscle Memory) | 13 Chương × 10 Bài/Chương | Đối chiếu T-SQL &amp; SQLite | Chấm điểm tự động 100%</div>' +
+      '</div>';
+
+    // Khung tiến độ & Banner sư phạm
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:14px;"><legend>📊 Tiến Độ Rèn Luyện 130 Bài FruitStore</legend>' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">' +
+        '<span>Tổng số bài hoàn thành: <b>' + solvedCount + ' / ' + totalCount + ' bài</b> (' + percent + '%)</span>' +
+        '<button class="default" onclick="window.openExerciseInLab(\'FS-CH01-01\')">🚀 Bắt Đầu Làm Từ Bài 1.1 ►</button>' +
+      '</div>' +
+      '<div class="progress-indicator" style="height:18px; background:var(--bg-window, #fff); border:1px inset #808080; padding:1px;">' +
+        '<div style="height:100%; width:' + percent + '%; background:linear-gradient(90deg, #000080, #1084d0); color:#fff; font-size:11px; display:flex; align-items:center; justify-content:center; font-weight:bold;">' +
+          (percent > 5 ? (percent + '%') : '') +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:10px; font-size:12px; background:#fffbe6; border:1px solid #d4b106; padding:8px;">' +
+        '<b>💡 Quy luật 10 bài/chương:</b> Bài 1–3: Mẫu A (3 bảng khác nhau) | Bài 4–6: Mẫu B (3 bảng khác nhau) | Bài 7–8: Tổ hợp Trung cấp | Bài 9–10: Báo cáo thực chiến &amp; Bẫy phỏng vấn.' +
+      '</div>' +
+    '</fieldset>';
+
+    // Toolbar Bộ lọc (Theo Chương, Theo Trạng thái, Tìm kiếm)
+    html += '<fieldset class="retro-groupbox" style="margin-bottom:14px;"><legend>🔍 Bộ Lọc &amp; Tìm Kiếm Nhanh Bài Tập</legend>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">' +
+        '<div class="field-row" style="margin:0;"><label for="fs-filter-chapter"><b>Chương:</b></label>' +
+        '<select id="fs-filter-chapter" style="min-width:220px;">' +
+          '<option value="all" ' + (activeChapFilter === "all" ? "selected" : "") + '>-- Tất cả 13 Chương (130 bài) --</option>';
+
+    var groups = (global.SQLMasterRegistry && global.SQLMasterRegistry.fruitstore130) ? global.SQLMasterRegistry.fruitstore130 : [];
+    groups.forEach(function(g) {
+      html += '<option value="' + g.chapter_id + '" ' + (activeChapFilter === g.chapter_id ? "selected" : "") + '>' +
+        escapeHtml((g.chapter_title || ("Chương " + g.chapter_num))) +
+        '</option>';
+    });
+
+    html += '</select></div>' +
+        '<div class="field-row" style="margin:0;"><label for="fs-filter-status"><b>Trạng thái:</b></label>' +
+        '<select id="fs-filter-status" style="min-width:140px;">' +
+          '<option value="all" ' + (activeStatusFilter === "all" ? "selected" : "") + '>-- Tất cả trạng thái --</option>' +
+          '<option value="undone" ' + (activeStatusFilter === "undone" ? "selected" : "") + '>📝 Chưa làm</option>' +
+          '<option value="done" ' + (activeStatusFilter === "done" ? "selected" : "") + '>✅ Đã hoàn thành</option>' +
+        '</select></div>' +
+        '<div class="field-row" style="margin:0; flex:1; min-width:200px;"><label for="fs-search-input"><b>Tìm kiếm:</b></label>' +
+        '<input type="text" id="fs-search-input" value="' + escapeHtml(state.fsDrillSearch || "") + '" placeholder="Gõ từ khóa, tên bảng, cú pháp..." style="width:100%;">' +
+        '</div>' +
+      '</div>' +
+    '</fieldset>';
+
+    // Danh sách bài tập hiển thị
+    html += '<div style="margin-bottom:8px; font-size:12px; color:var(--text-muted);">' +
+      'Hiển thị <b>' + filteredDrills.length + ' / ' + totalCount + ' bài tập</b>' +
+    '</div>';
+
+    html += '<div class="drill-list">';
+    if (filteredDrills.length === 0) {
+      html += '<div class="callout-warn" style="padding:15px; text-align:center;">Không tìm thấy bài tập nào khớp với bộ lọc hiện tại.</div>';
+    } else {
+      filteredDrills.forEach(function(ex) {
+        var isSolved = !!solvedMap[ex.id];
+        html += '<div class="exercise-box drill-card ' + (isSolved ? "drill-solved" : "") + '" style="margin-bottom: 14px; border-left: 4px solid ' + (isSolved ? "var(--ok-color, green)" : "var(--accent, #000080)") + ';">' +
+          '<div class="example-header">' +
+            '<span>' +
+              (isSolved ? "✅ " : "📝 ") + "<b>[" + escapeHtml(ex.id) + "] " + escapeHtml(ex.title) + "</b> " +
+              '<span class="badge-tsql" style="font-size:11px;">' + escapeHtml(ex.level) + '</span> ' +
+              '<span class="badge-chuan">[' + escapeHtml(ex.chapterTitle || ex.chapterId.toUpperCase()) + ']</span>' +
+            '</span>' +
+            '<button class="default" onclick="window.openExerciseInLab(\'' + escapeHtml(ex.id) + '\')">' +
+              '🧪 Làm &amp; Chấm Trong Lab ►' +
+            '</button>' +
+          '</div>' +
+          '<div style="margin:6px 0; font-family:var(--font-mono); background:#fffbe6; border:1px solid #d4b106; padding:4px 8px; font-size:12px;">' +
+            '<strong>Khuôn mẫu phản xạ:</strong> <code>' + escapeHtml(ex.pattern) + '</code>' +
+          '</div>' +
+          '<p style="margin: 6px 0; font-size:13px;"><strong>Đề bài:</strong> ' + escapeHtml(ex.question) + '</p>' +
+          '<div class="drill-actions">' +
+            '<details class="hint-tier" style="width:100%;">' +
+              '<summary style="cursor:pointer; font-weight:bold; color:var(--accent);">💡 Xem Gợi Ý &amp; Đáp Án Chuẩn (T-SQL vs SQLite)</summary>' +
+              '<div style="margin-top:6px; padding:8px; background:var(--bg-card); border:1px inset var(--border-dark);">' +
+                '<p style="margin:0 0 6px 0;"><strong>💡 Gợi ý tư duy:</strong> ' + escapeHtml(ex.hint) + '</p>' +
+                '<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:8px;">' +
+                  '<div>' +
+                    '<strong>Chuẩn T-SQL (SQL Server):</strong>' +
+                    '<pre class="code-block" style="margin-top:4px; max-height:180px; overflow:auto;"><code>' + escapeHtml(ex.tsql) + '</code></pre>' +
+                  '</div>' +
+                  '<div>' +
+                    '<strong>Chuẩn SQLite (SQL Lab):</strong>' +
+                    '<pre class="code-block" style="margin-top:4px; max-height:180px; overflow:auto;"><code>' + escapeHtml(ex.sql) + '</code></pre>' +
+                  '</div>' +
+                '</div>' +
+                (ex.expected ? ('<div style="margin-top:8px;"><strong>Bảng kết quả chuẩn (' + (ex.expected.rows ? ex.expected.rows.length : 0) + ' dòng):</strong>' + renderStaticTableHtml(ex.expected) + '</div>') : '') +
+              '</div>' +
+            '</details>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+    html += '</div>';
+
+    html += '</div>';
+    pane.innerHTML = html;
+    pane.scrollTop = 0;
+
+    // Gắn sự kiện cho các bộ lọc
+    var chFilterEl = document.getElementById("fs-filter-chapter");
+    if (chFilterEl) {
+      chFilterEl.onchange = function() {
+        state.fsDrillFilterChap = this.value;
+        renderFruitStore130View(this.value);
+      };
+    }
+    var stFilterEl = document.getElementById("fs-filter-status");
+    if (stFilterEl) {
+      stFilterEl.onchange = function() {
+        state.fsDrillFilterStatus = this.value;
+        renderFruitStore130View(state.fsDrillFilterChap);
+      };
+    }
+    var searchEl = document.getElementById("fs-search-input");
+    if (searchEl) {
+      searchEl.oninput = function() {
+        state.fsDrillSearch = this.value;
+        clearTimeout(window._fsSearchTimeout);
+        window._fsSearchTimeout = setTimeout(function() {
+          renderFruitStore130View(state.fsDrillFilterChap);
+        }, 250);
+      };
+    }
+  }
+
+  /* ========================================================================
      7. PHÒNG THỰC HÀNH SQL 2 CỘT (.lab-grid) & MÁY CHẤM TỰ ĐỘNG (TASK FIX 05)
      ======================================================================== */
   function normalizeVal(val) {
@@ -1250,6 +1543,36 @@
           idea: "Mẫu bài toán: " + (lc.pattern || lc.title),
           syntax: lc.solution_sql || "",
           trap: (lc.hints && lc.hints[0]) || ""
+        }
+      });
+    });
+
+    // Nạp thêm 130 bài tập thực hành FruitStore_Ultimate (Ch01 -> Ch13)
+    var fsDrills = (global.SQLMasterRegistry && Array.isArray(global.SQLMasterRegistry.fruitstoreDrills))
+      ? global.SQLMasterRegistry.fruitstoreDrills
+      : [];
+    fsDrills.forEach(function(ex) {
+      var groupLabel = "🍎 Chương " + (ex.chapterNum || ex.chapterId.replace("ch0", "").replace("ch", "")) + ": FruitStore";
+      list.push({
+        id: ex.id,
+        chId: ex.chapterId,
+        chCode: groupLabel,
+        title: ex.title,
+        difficulty: ex.level || "Cơ bản",
+        db: "fruitstore",
+        prompt: ex.question,
+        h1: ex.hint,
+        h2: "Khuôn mẫu phản xạ: " + ex.pattern,
+        solSql: ex.sql || ex.sqlite,
+        tsql: ex.tsql,
+        pattern: ex.pattern,
+        expected: ex.expected,
+        starter_sql: "-- Đề bài: " + ex.title + " (DB: FruitStore_Ultimate)\n-- Khuôn mẫu: " + ex.pattern + "\n\n",
+        order_matters: false,
+        note3: {
+          idea: ex.pattern,
+          syntax: ex.tsql,
+          trap: ex.hint
         }
       });
     });
@@ -2540,6 +2863,8 @@
       renderNotesView();
     } else if (view === "tracks") {
       renderTracksView(param);
+    } else if (view === "fruitstore130") {
+      renderFruitStore130View(param);
     } else if (view === "appendices") {
       renderAppendicesView();
     }
@@ -2678,8 +3003,13 @@
       var qBtn = target.closest(".quick-link-btn");
       if (qBtn) {
         e.preventDefault();
+        var qV = qBtn.getAttribute("data-quick-view");
         var qCh = qBtn.getAttribute("data-quick-ch");
-        navigateTo("chapter", qCh);
+        if (qV) {
+          navigateTo(qV);
+        } else if (qCh) {
+          navigateTo("chapter", qCh);
+        }
         return;
       }
 
@@ -2955,7 +3285,7 @@
         return;
       }
       if (target.id === "btn-go-fruit") {
-        navigateTo("chapter", "ch15");
+        navigateTo("fruitstore130");
         return;
       }
       if (target.id === "btn-print") {
@@ -3630,6 +3960,9 @@
     renderLabView: renderLabView,
     renderSimulatorsView: renderSimulatorsView,
     renderInterviewView: renderInterviewView,
+    renderFruitStore130View: renderFruitStore130View,
+    renderFruitStoreDrillsSection: renderFruitStoreDrillsSection,
+    openExerciseInLab: window.openExerciseInLab,
     renderNotesView: renderNotesView,
     renderTocView: renderTocView,
     renderLeftTocTree: renderLeftTocTree
