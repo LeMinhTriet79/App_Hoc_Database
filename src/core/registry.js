@@ -28,12 +28,18 @@
     registerToc: function(tocObj) {
       this.toc = tocObj;
     },
+    setMetaToc: function(tocObj) {
+      this.registerToc(tocObj);
+    },
 
     /**
      * Đăng ký nội dung HTML cho Chương 0 (Nền tảng & Hướng dẫn cài đặt)
      */
     registerChapter0: function(htmlString) {
       this.ch0_html = htmlString;
+    },
+    setCh0Html: function(htmlString) {
+      this.registerChapter0(htmlString);
     },
 
     /**
@@ -92,6 +98,34 @@
     },
 
     /**
+     * Đăng ký 6 Bộ mô phỏng tương tác
+     */
+    setSimulators: function(simObj) {
+      this.simulators = simObj || {};
+    },
+
+    /**
+     * Đăng ký Ngân hàng 48 Thẻ phỏng vấn Leitner
+     */
+    setInterviewBank: function(bankArr) {
+      this.interview_bank = Array.isArray(bankArr) ? bankArr : [];
+    },
+
+    /**
+     * Đăng ký 12 Thử thách LeetCode SQL
+     */
+    setLeetCodeChallenges: function(lcArr) {
+      this.leetcode_challenges = Array.isArray(lcArr) ? lcArr : [];
+    },
+
+    /**
+     * Đăng ký Phụ lục A-F
+     */
+    setAppendicesHtml: function(htmlStr) {
+      this.appendices_html = htmlStr || "";
+    },
+
+    /**
      * Đăng ký một Nhánh kiến thức mở rộng (Track: MySQL, PostgreSQL, NoSQL...)
      */
     registerTrack: function(trackId, trackMeta) {
@@ -113,6 +147,9 @@
         });
       }
     },
+    registerExpansionTrack: function(trackId, trackMeta) {
+      return this.registerTrack(trackId, trackMeta);
+    },
 
     /**
      * Tổng hợp toàn bộ các mô-đun đã nạp thành hằng DATA chuẩn cho giao diện
@@ -129,8 +166,15 @@
         interview_bank: this.interview_bank,
         leetcode_challenges: this.leetcode_challenges,
         appendices_html: this.appendices_html,
-        tracks: this.tracks
+        tracks: this.tracks,
+        expansion_tracks: this.tracks
       };
+    },
+    buildGlobalData: function() {
+      return this.buildDataObject();
     }
   };
+
+  // Đồng bộ cả hai tên gọi không gian tên toàn cục
+  global.BiKipRegistry = global.BIKIP_REGISTRY;
 })(window);

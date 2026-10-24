@@ -884,28 +884,28 @@ window.BIKIP_REGISTRY.registerChapter({
           [
             1,
             "Võ Thành Tài",
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             850000,
             "Đã giao"
           ],
           [
             2,
             "Nguyễn Thị Lệ",
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             180000,
             "Đã giao"
           ],
           [
             3,
             "Trương Vô Kỵ",
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             150000,
             "Đã giao"
           ],
           [
             4,
             "Triệu Mẫn",
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             850000,
             "Đã giao"
           ]
@@ -926,28 +926,28 @@ window.BIKIP_REGISTRY.registerChapter({
           [
             1,
             "Võ Thành Tài",
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             850000,
             "Đã giao"
           ],
           [
             2,
             "Nguyễn Thị Lệ",
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             180000,
             "Đã giao"
           ],
           [
             3,
             "Trương Vô Kỵ",
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             150000,
             "Đã giao"
           ],
           [
             4,
             "Triệu Mẫn",
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             850000,
             "Đã giao"
           ]
@@ -1030,33 +1030,33 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             "Lê Minh Triết"
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ]
         ]
       },
@@ -1085,33 +1085,33 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             "Lê Minh Triết"
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ]
         ]
       }
@@ -1901,31 +1901,31 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             2
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             3
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             3
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
             3
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
             3
           ]
@@ -1956,31 +1956,31 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             2
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             3
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             3
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
             3
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
             3
           ]
@@ -4236,7 +4236,7 @@ window.BIKIP_REGISTRY.registerChapter({
       "category": "14. Bảo mật & Phân quyền (DCL)",
       "keyword": "Row-Level Security (CREATE SECURITY POLICY)",
       "what_it_does": "Tự động gắn bộ lọc dòng (Filter Predicate) vô hình vào mọi câu lệnh SELECT/UPDATE trên bảng dựa theo ngữ cảnh người dùng đăng nhập (SESSION_CONTEXT).",
-      "backend_scenario": "Khi nhân viên bán hàng Hoàng Cúc (EmployeeID = 6) đăng nhập vào hệ thống nội bộ và chạy SELECT * FROM Orders, RLS tự động chỉ trả về các đơn hàng do chính Hoàng Cúc phụ trách.",
+      "backend_scenario": "Khi nhân viên bán hàng Nguyễn Tuấn Thanh (EmployeeID = 6) đăng nhập vào hệ thống nội bộ và chạy SELECT * FROM Orders, RLS tự động chỉ trả về các đơn hàng do chính Nguyễn Tuấn Thanh phụ trách.",
       "tsql_code": "-- Thiết lập ngữ cảnh phiên làm việc từ Backend:\nEXEC sp_set_session_context @key = N'CurrentEmployeeID', @value = 6;\n\n-- RLS Predicate tự động lọc:\nSELECT OrderID, CustomerID, EmployeeID, TotalAmount, Status\nFROM Orders\nWHERE EmployeeID = CAST(SESSION_CONTEXT(N'CurrentEmployeeID') AS INT);",
       "lab_sql": "SELECT OrderID, CustomerID, EmployeeID, TotalAmount, Status FROM Orders WHERE EmployeeID = 6;",
       "output": {
@@ -4293,7 +4293,7 @@ window.BIKIP_REGISTRY.registerChapter({
         ]
       },
       "part1_what": "Tự động gắn bộ lọc dòng (Filter Predicate) vô hình vào mọi câu lệnh SELECT/UPDATE trên bảng dựa theo ngữ cảnh người dùng đăng nhập (SESSION_CONTEXT).",
-      "part2_backend": "Khi nhân viên bán hàng Hoàng Cúc (EmployeeID = 6) đăng nhập vào hệ thống nội bộ và chạy SELECT * FROM Orders, RLS tự động chỉ trả về các đơn hàng do chính Hoàng Cúc phụ trách.",
+      "part2_backend": "Khi nhân viên bán hàng Nguyễn Tuấn Thanh (EmployeeID = 6) đăng nhập vào hệ thống nội bộ và chạy SELECT * FROM Orders, RLS tự động chỉ trả về các đơn hàng do chính Nguyễn Tuấn Thanh phụ trách.",
       "part3_tsql": "-- Thiết lập ngữ cảnh phiên làm việc từ Backend:\nEXEC sp_set_session_context @key = N'CurrentEmployeeID', @value = 6;\n\n-- RLS Predicate tự động lọc:\nSELECT OrderID, CustomerID, EmployeeID, TotalAmount, Status\nFROM Orders\nWHERE EmployeeID = CAST(SESSION_CONTEXT(N'CurrentEmployeeID') AS INT);",
       "part4_output": {
         "cols": [
@@ -5209,33 +5209,33 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             "Lê Minh Triết"
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             "Nguyễn Tấn Dũng"
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
-            "Trần Thị Mai"
+            "Trần Thị Mỹ Tiên"
           ]
         ]
       }
@@ -5443,31 +5443,31 @@ window.BIKIP_REGISTRY.registerChapter({
           ],
           [
             3,
-            "Trần Thị Mai",
+            "Trần Thị Mỹ Tiên",
             "Quản lý Bán hàng",
             2
           ],
           [
             4,
-            "Phạm Văn A",
+            "Phạm Võ Khải Anh",
             "Nhân viên Kho",
             3
           ],
           [
             5,
-            "Lý Bạch",
+            "Nguyễn Sỹ Còi",
             "Nhân viên Kho",
             3
           ],
           [
             6,
-            "Hoàng Cúc",
+            "Nguyễn Tuấn Thanh",
             "Nhân viên Bán hàng",
             3
           ],
           [
             7,
-            "Đinh Hợi",
+            "Nguyễn Minh Trung",
             "Nhân viên Bán hàng",
             3
           ]
